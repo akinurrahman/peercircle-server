@@ -14,6 +14,7 @@ const userSchema = new Schema(
     otp: { type: String },
     otpExpires: { type: Date },
     profilePicture: { type: String, default: "" },
+    bio : {type:String},
     gender: { type: String, enum: ["male", "female", "other"] },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
