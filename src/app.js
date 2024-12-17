@@ -16,7 +16,8 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-app.get("/", (req,res)=> res.send("Hello world!"))
+import authRoutes from "./routes/auth.route.js";
 
+app.use("/api/v1", authRoutes);
 
-export {app}
+export { app };
