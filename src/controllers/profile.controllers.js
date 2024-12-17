@@ -45,3 +45,38 @@ export const getPublicProfileById = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, "profile fetched successfully"));
 });
+
+export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+
+  if (userId === req.user._id) {
+    throw new ApiError(400, "Your can't follow/unfollow yourself");
+  }
+
+  const currentUser = await User.findById(req.user?._id);
+  const targetUser = await User.findById(userId);
+
+  if (!targetUser) {
+    throw new ApiError(404, "user not found");
+  }
+
+  // check if the current user is already following the target user
+  if (currentUser.following.includes(userId)) {
+    //unfollow logic
+    await Promise.all([
+      User.updateOne({ _id: req.user?._id }, { $pull: { following: userId } }),
+      User.updateOne({ _id: userId }, { $pull: { followers: req.user?._id } }),
+    ]);
+    return res.status(200).json(new ApiResponse(200, {} , "unfollowed successfully!"))
+  } else {
+    //follow logic
+    await Promise.all([
+      User.updateOne({ _id: req.user?._id }, { $push: { following: userId } }),
+      User.updateOne({ _id: userId }, { $push: { followers: req.user?._id } }),
+    ]);
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "followed successfully!"));
+
+  }
+});

@@ -5,6 +5,7 @@ import {
   editProfile,
   getMyProfile,
   getPublicProfileById,
+  toggleFollowUnfollow,
 } from "../controllers/profile.controllers.js";
 
 
@@ -19,5 +20,7 @@ router.route("/refresh-token").post(refreshAccesToken)
 router.route("/profile").patch(verifyUser, editProfile)
 router.route("/profile/").get(verifyUser,getMyProfile);
 router.route("/profile/:id").get(getPublicProfileById);
+router.route("/toggle-follow-unfollow/:id").post(verifyUser, toggleFollowUnfollow);
+
 
 export default router
