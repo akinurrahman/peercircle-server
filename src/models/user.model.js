@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -13,6 +13,12 @@ const userSchema = new Schema(
     isVerified: { type: Boolean, default: false },
     otp: { type: String },
     otpExpires: { type: Date },
+    profilePicture: { type: String, default: "" },
+    gender: { type: String, enum: ["male", "female", "other"] },
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    posts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
   },
   { timestamps: true }
 );
@@ -53,12 +59,13 @@ userSchema.methods.generateAccessToken = function () {
 };
 
 userSchema.methods.generateRefreshToken = function () {
- return jwt.sign(
-   {
-     _id: this.id,
-   },
-   process.env.REFRESH_TOKEN_SECRET
- ,{expiresIn : process.env.REFRESH_TOKEN_EXPIRY});
+  return jwt.sign(
+    {
+      _id: this.id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+  );
 };
 
 export const User = model("User", userSchema);

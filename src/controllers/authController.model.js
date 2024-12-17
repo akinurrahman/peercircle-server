@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendOtpOnEmail } from "../utils/email.js";
 import { verifyEmailOtpTemplate } from "../utils/verifyEmailOtpTemplate.js";
 import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
+import jwt from 'jsonwebtoken'
 
 export const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
@@ -134,4 +135,44 @@ export const logoutUser = asyncHandler(async(req,res)=>{
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200,{}, "logged out successfully!"))
+})
+
+export const refreshAccesToken = asyncHandler(async (req,res)=>{
+  const {refreshToken} = req.cookies || req.body
+
+  if(!refreshToken){
+    throw new ApiError(401, "Refresh token not provided. Please login again.");
+  }
+
+  try {
+    const decodedToken = jwt.decode(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+    const user = await User.findById(decodedToken._id)
+
+    if(refreshToken !== user.refreshToken){
+       throw new ApiError(
+         403,
+         "Invalid or expired refresh token. Please login again."
+       );
+    }
+
+    const newAccessToken = user.generateAccessToken();
+
+    const options = {
+      httpOnly : true,
+      secure : true
+    }
+
+    res
+    .status(200)
+    .cookie("accessToken" , newAccessToken, options)
+    .json(new ApiResponse(200, { accessToken: newAccessToken }, "Token refreshed successfully"));
+
+    
+  } catch (error) {
+     throw new ApiError(
+       403,
+       "Invalid or expired refresh token. Please login again."
+     );
+  }
 })
