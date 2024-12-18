@@ -98,7 +98,13 @@ export const postComment = asyncHandler(async (req, res) => {
 export const getAllComments = asyncHandler(async (req, res) => {
   const postId = req.params?.postId;
 
-  const post = await Post.findById(postId).populate("comments");
+  const post = await Post.findById(postId).populate({
+    path: "comments",
+    populate: {
+      path: "author",
+      select: "fullName profilePicture",
+    },
+  });
   if (post.comments.length === 0) {
     throw new ApiError(404, "No comments found");
   }
