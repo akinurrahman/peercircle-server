@@ -67,30 +67,45 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 });
 
 export const postComment = asyncHandler(async (req, res) => {
-    const commenterId = req.user._id;
-    const postId = req.params.postId;
-    const {text} = req.body;
+  const commenterId = req.user._id;
+  const postId = req.params.postId;
+  const { text } = req.body;
 
-    if(!text){
-      throw new ApiError(400, "Please provide valid fields");
-    }
+  if (!text) {
+    throw new ApiError(400, "Please provide valid fields");
+  }
 
-    const post = await Post.findById(postId);
-    if(!post){
-      throw new ApiError(404, "Post not found");
-    }
+  const post = await Post.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
 
-    const comment = new Comment({
-      text,
-      author: commenterId,
-      postId
-    })
-    await comment.save();
+  const comment = new Comment({
+    text,
+    author: commenterId,
+    postId,
+  });
+  await comment.save();
 
-    post.comments.push(comment._id);
-    await post.save();
+  post.comments.push(comment._id);
+  await post.save();
 
-    res.status(201).json(new ApiResponse(201, comment, "Comment added successfully!"))
+  res
+    .status(201)
+    .json(new ApiResponse(201, comment, "Comment added successfully!"));
+});
 
-})
+export const getAllComments = asyncHandler(async (req, res) => {
+  const postId = req.params?.postId;
 
+  const post = await Post.findById(postId).populate("comments");
+  if (post.comments.length === 0) {
+    throw new ApiError(404, "No comments found");
+  }
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, post.comments, "Comments fetched successfully!")
+    );
+});
