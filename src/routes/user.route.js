@@ -23,4 +23,5 @@ router.route("/profile/:id").get(getPublicProfileById);
 router.route("/toggle-follow-unfollow/:id").post(verifyUser, toggleFollowUnfollow);
 
 
+
 export default router
