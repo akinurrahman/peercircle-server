@@ -115,3 +115,23 @@ export const getAllComments = asyncHandler(async (req, res) => {
       new ApiResponse(200, post.comments, "Comments fetched successfully!")
     );
 });
+
+export const bookMarkPost = asyncHandler(async (req, res) => {
+  const postId = req.params.postId;
+  const userId = req.user._id;
+
+  const post = await Post.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+  const user = await User.findById(userId)
+
+  const isBookmarked =  user.bookmarks.includes(postId)
+  const update = isBookmarked ? { $pull : {bookmarks : postId}} : {$push: {bookmarks : postId}}
+  const updatedUser = await User.findByIdAndUpdate(userId, update, {new : true}).populate("bookmarks")
+  
+  const action =isBookmarked ? "Unbookmarked" : "Bookmarked"
+
+  res.status(200).json(new ApiResponse(200, updatedUser.bookmarks, `${action} successfully!`));
+});

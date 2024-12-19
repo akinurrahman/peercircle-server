@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/verifyUser.middleware.js";
-import { addPost, getAllComments, getAllPosts, likeUnlikePost, postComment } from "../controllers/post.controllers.js";
+import { addPost, bookMarkPost, getAllComments, getAllPosts, likeUnlikePost, postComment } from "../controllers/post.controllers.js";
 
 const router = Router()
 
@@ -10,5 +10,6 @@ router.route("/posts/:id").get(verifyUser, getAllPosts) // to get all of someone
 router.route("/post/like-unlike").patch(verifyUser, likeUnlikePost)
 router.route("/post/comment/:postId").post(verifyUser, postComment);
 router.route("/post/comments/:postId").get(verifyUser, getAllComments)
+router.route("/post/bookmark/:postId").post(verifyUser, bookMarkPost)
 
 export default router
