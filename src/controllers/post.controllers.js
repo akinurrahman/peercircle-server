@@ -125,32 +125,43 @@ export const bookMarkPost = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Post not found");
   }
 
-  const user = await User.findById(userId)
+  const user = await User.findById(userId);
 
-  const isBookmarked =  user.bookmarks.includes(postId)
-  const update = isBookmarked ? { $pull : {bookmarks : postId}} : {$push: {bookmarks : postId}}
-  const updatedUser = await User.findByIdAndUpdate(userId, update, {new : true}).populate("bookmarks")
-  
-  const action =isBookmarked ? "Unbookmarked" : "Bookmarked"
+  const isBookmarked = user.bookmarks.includes(postId);
+  const update = isBookmarked
+    ? { $pull: { bookmarks: postId } }
+    : { $push: { bookmarks: postId } };
+  const updatedUser = await User.findByIdAndUpdate(userId, update, {
+    new: true,
+  }).populate("bookmarks");
 
-  res.status(200).json(new ApiResponse(200, updatedUser.bookmarks, `${action} successfully!`));
+  const action = isBookmarked ? "Unbookmarked" : "Bookmarked";
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser.bookmarks, `${action} successfully!`)
+    );
 });
 
-export const deletePost =asyncHandler(async (req, res) => {
-  const userId = req.user._id.toString();
-  const postId = req.params.postId.toString();
+export const deletePost = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const postId = req.params.postId;
 
   const post = await Post.findById(postId);
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
 
-
-  if (post.author.toString() !== userId) {
+  if (post.author.toString() !== userId.toString()) {
     throw new ApiError(403, "You are not authorized to delete this post");
   }
 
   await Post.findByIdAndDelete(postId);
+
+  const user = await User.findById(userId);
+  user.posts.pull(postId);
+  await user.save();
 
   res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
 });
