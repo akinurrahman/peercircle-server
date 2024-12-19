@@ -8,18 +8,19 @@ import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
 export const registerUser = asyncHandler(async (req, res) => {
-  const { fullName, email, username, password } = req.body;
+  const { fullName, email,  password } = req.body;
 
   //check if user already exists
   const existingUser = await User.findOne({
-    $or: [{ email, username }],
+    email
   });
   if (existingUser) {
-    throw new ApiError(409, "User with email or username already exists");
+    throw new ApiError(409, "User with this email already exists");
   }
 
   // create user and generate otp
-  const user = new User({ fullName, email, username, password });
+  const user = new User({ fullName, email,  password });
+  await user.generateUniqueUsername();
   const otp = user.generateOtp();
   await user.save();
 

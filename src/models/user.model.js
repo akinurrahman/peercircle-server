@@ -69,4 +69,24 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
+// Instance method to generate a unique username
+userSchema.methods.generateUniqueUsername = async function () {
+  const baseUsername = this.fullName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "_") // Replace non-alphanumeric characters with '_'
+    .replace(/_+/g, "_") // Replace multiple underscores with a single underscore
+    .replace(/^_|_$/g, ""); // Remove leading or trailing underscores
+
+  let username = baseUsername;
+  let count = 1;
+
+  // Ensure the username is unique
+  while (await mongoose.model("User").findOne({ username })) {
+    username = `${baseUsername}_${count}`;
+    count++;
+  }
+
+  this.username = username; // Assign the generated username to the instance
+};
+
 export const User = model("User", userSchema);
