@@ -26,7 +26,7 @@ export const verifyUser = asyncHandler(async (req, res, next) => {
 });
 
 
-export const isVerified = asyncHandler(async (req, res, next) => {
+export const isEmailVerified = asyncHandler(async (req, res, next) => {
   if (!req.user.isVerified) {
     throw new ApiError(401, "User is not verified");
   }
