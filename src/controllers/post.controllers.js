@@ -135,3 +135,22 @@ export const bookMarkPost = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, updatedUser.bookmarks, `${action} successfully!`));
 });
+
+export const deletePost =asyncHandler(async (req, res) => {
+  const userId = req.user._id.toString();
+  const postId = req.params.postId.toString();
+
+  const post = await Post.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+
+  if (post.author.toString() !== userId) {
+    throw new ApiError(403, "You are not authorized to delete this post");
+  }
+
+  await Post.findByIdAndDelete(postId);
+
+  res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
+});
