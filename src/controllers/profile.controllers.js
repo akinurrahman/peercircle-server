@@ -67,7 +67,9 @@ export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
       User.updateOne({ _id: req.user?._id }, { $pull: { following: userId } }),
       User.updateOne({ _id: userId }, { $pull: { followers: req.user?._id } }),
     ]);
-    return res.status(200).json(new ApiResponse(200, {} , "unfollowed successfully!"))
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "unfollowed successfully!"));
   } else {
     //follow logic
     await Promise.all([
@@ -77,6 +79,17 @@ export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, {}, "followed successfully!"));
+  }
+});
 
+export const checkIfUserNameExists = asyncHandler(async (req, res) => {
+  const username = req.params.username;
+  const user = await User.findOne({ username });
+  if (user) {
+    return res.status(409).json(new ApiResponse(409, {}, "user already exists"));
+  } else {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Username is available"));
   }
 });
