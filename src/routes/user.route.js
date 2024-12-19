@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {  loginUser, logoutUser, refreshAccesToken, registerUser, verifyEmail } from "../controllers/auth.controllers.js";
+import {  loginUser, logoutUser, refreshAccesToken, registerUser, resendOtp, verifyEmail } from "../controllers/auth.controllers.js";
 import { isEmailVerified, verifyUser } from "../middlewares/verifyUser.middleware.js";
 import {
   checkIfUserNameExists,
@@ -20,6 +20,7 @@ router.route("/verify-email").post(verifyEmail)
 router.route("/login").post(loginUser)
 router.route("/logout").post(verifyUser,logoutUser)
 router.route("/refresh-token").post(refreshAccesToken)
+router.route("/resend-otp").post(verifyUser, resendOtp)
 
 // profile
 router.route("/profile").patch(verifyUser,isEmailVerified, editProfile)

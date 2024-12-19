@@ -64,6 +64,33 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "OTP verified successfully"));
 });
 
+export const resendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.user;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Check if the email is already verified
+  if (user.isVerified) {
+    throw new ApiError(400, "Email is already verified. OTP cannot be resent.");
+  }
+
+  const otp = user.generateOtp();
+  await user.save();
+
+  await sendOtpOnEmail({
+    to: email,
+    subject: "Verify your email",
+    html: verifyEmailOtpTemplate(otp),
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "OTP sent successfully"));
+});
+
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
@@ -187,5 +214,3 @@ export const refreshAccesToken = asyncHandler(async (req, res) => {
     );
   }
 });
-
-
