@@ -163,5 +163,7 @@ export const deletePost = asyncHandler(async (req, res) => {
   user.posts.pull(postId);
   await user.save();
 
+  await Comment.deleteMany({ postId });
+
   res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
 });
