@@ -42,9 +42,14 @@ userSchema.methods.generateOtp = function () {
 };
 
 userSchema.methods.verifyEmail = function (otp) {
-  if (this.otpExpires < Date.now()) return false; //expired
-  return (this.otp = otp); //check otp
+  // Check if OTP is expired
+  if (this.otpExpires < Date.now()) {
+    return false; // OTP expired
+  }
+  // Check if OTP matches
+  return this.otp === otp;
 };
+
 
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(

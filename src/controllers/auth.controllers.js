@@ -7,19 +7,25 @@ import { verifyEmailOtpTemplate } from "../utils/verifyEmailOtpTemplate.js";
 import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
+const options = {
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "Strict",
+  path: "/",
+};
+
 export const registerUser = asyncHandler(async (req, res) => {
-  const { fullName, email,  password } = req.body;
+  const { fullName, email, password } = req.body;
 
   //check if user already exists
   const existingUser = await User.findOne({
-    email
+    email,
   });
   if (existingUser) {
     throw new ApiError(409, "User with this email already exists");
   }
 
   // create user and generate otp
-  const user = new User({ fullName, email,  password });
+  const user = new User({ fullName, email, password });
   await user.generateUniqueUsername();
   const otp = user.generateOtp();
   await user.save();
@@ -32,7 +38,9 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 
   return res
-    .status(201)
+    .status(200)
+    .cookie("isVerified", false, options)
+    .cookie("email", email, options)
     .json(
       new ApiResponse(200, {}, "User registered. Check your email for OTP.")
     );
@@ -41,27 +49,37 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const verifyEmail = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
 
+  // Find the user by email
   const user = await User.findOne({ email });
   if (!user) throw new ApiError(401, "User not found");
 
+  // Check if OTP is valid
   if (!user.verifyEmail(otp)) {
     throw new ApiError(400, "Invalid or expired OTP");
   }
 
+  // Check if the user's email is already verified
+  if (user.isVerified) {
+    throw new ApiError(400, "Email is already verified");
+  }
+
+  // Mark user as verified and clear OTP fields
   user.isVerified = true;
   user.otp = undefined;
   user.otpExpires = undefined;
   await user.save();
 
-  //send otp to email
+  // Send the welcome email if necessary
   await sendOtpOnEmail({
     to: email,
     subject: "Welcome to PeerCircle!",
     html: welcomeEmailTemplate(user.fullName),
   });
 
+  // Return a success response
   return res
-    .status(201)
+    .cookie("isVerified", true, options)
+    .status(200)
     .json(new ApiResponse(200, {}, "OTP verified successfully"));
 });
 
@@ -100,7 +118,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({
-    $or: [{ email }, { username }],
+    email
   });
 
   if (!user) {
@@ -118,10 +136,6 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   user.refreshToken = refreshToken;
   await user.save({ validateBeforeSave: false });
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
 
   return res
     .status(200)
