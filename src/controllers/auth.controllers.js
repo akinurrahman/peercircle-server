@@ -8,7 +8,7 @@ import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
 const options = {
-  domain: process.env.COOKIE_DOMAIN || "localhost",
+  domain: ".vercel.app",
   secure: process.env.NODE_ENV === "production",
   sameSite: "Strict",
   path: "/",
