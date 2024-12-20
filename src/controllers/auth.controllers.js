@@ -8,10 +8,12 @@ import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
 const options = {
+  domain: process.env.COOKIE_DOMAIN || "localhost",
   secure: process.env.NODE_ENV === "production",
   sameSite: "Strict",
   path: "/",
 };
+
 
 export const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, password } = req.body;
