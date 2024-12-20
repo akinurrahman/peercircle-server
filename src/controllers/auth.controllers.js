@@ -10,7 +10,7 @@ import jwt from "jsonwebtoken";
 const options = {
   domain: ".vercel.app",
   secure: process.env.NODE_ENV === "production",
-  sameSite: "Strict",
+  sameSite: "None",
   path: "/",
 };
 
