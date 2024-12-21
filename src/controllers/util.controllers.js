@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 
 export const fileUpload = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No File Uploaded" });

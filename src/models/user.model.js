@@ -20,6 +20,8 @@ const userSchema = new Schema(
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    location: { type: String },
+    website_url : {type: String},
   },
   { timestamps: true }
 );

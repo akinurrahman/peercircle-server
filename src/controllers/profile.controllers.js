@@ -1,18 +1,56 @@
+import { response } from "express";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const editProfile = asyncHandler(async (req, res) => {
-  const { fullName, profilePicture, bio, gender } = req.body;
+  const {
+    fullName,
+    profilePicture,
+    bio,
+    gender,
+    username,
+    location,
+    website_url,
+  } = req.body;
 
-  if (!fullName && !profilePicture && !bio && !gender) {
+  if (
+    !fullName &&
+    !profilePicture &&
+    !bio &&
+    !gender &&
+    !username &&
+    !location &&
+    !website_url
+  ) {
     throw new ApiError(400, "Please provide valid fields");
+  }
+
+  // Check if the username is already taken (exclude the current user's username)
+  if (username) {
+    const existingUser = await User.findOne({ username }).select("_id");
+    if (
+      existingUser &&
+      existingUser._id.toString() !== req.user._id.toString()
+    ) {
+      throw new ApiError(400, "Username is already taken");
+    }
   }
 
   const user = await User.findByIdAndUpdate(
     req.user._id, // Directly use the ID
-    { $set: { fullName, profilePicture, bio, gender } },
+    {
+      $set: {
+        fullName,
+        profilePicture,
+        bio,
+        gender,
+        username,
+        location,
+        website_url,
+      },
+    },
     { new: true, runValidators: true }
   ).select("-password -refreshToken");
 
@@ -21,29 +59,37 @@ export const editProfile = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, user, "profile updated successfully"));
 });
 
-export const getMyProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user?.id).select(
-    "-password -refreshToken -posts"
-  );
-  if (!user) {
-    throw new ApiError(404, "profile not found");
-  }
-
-  res
-    .status(200)
-    .json(new ApiResponse(200, user, "profile fetched successfully"));
-});
-
-export const getPublicProfileById = asyncHandler(async (req, res) => {
+export const getProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const user = await User.findById(id).select("-password -refreshToken -posts");
+  const userId = id || req.user?._id;
+
+  const user = await User.findById(userId).select("-password -refreshToken");
   if (!user) {
-    throw new ApiError(404, "profile not found");
+    throw new ApiError(404, "Profile not found");
   }
+
+  const isFollowing =
+    id && req.user?._id ? user.followers.includes(req.user._id) : undefined; // Only calculate for public profiles
+
+  const response = {
+    _id: user._id,
+    fullName: user.fullName,
+    username: user.username,
+    profilePicture: user.profilePicture,
+    bio: user.bio,
+    gender: user.gender,
+    followers: user.followers.length,
+    following: user.following.length,
+    posts: user.posts.length,
+    isVerified: user.isVerified,
+    website_url: user.website_url,
+    location: user.location,
+    ...(id && { isFollowing }), // Add `isFollowing` only for public profiles
+  };
 
   res
     .status(200)
-    .json(new ApiResponse(200, user, "profile fetched successfully"));
+    .json(new ApiResponse(200, response, "Profile fetched successfully"));
 });
 
 export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
@@ -69,7 +115,9 @@ export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
     ]);
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "unfollowed successfully!"));
+      .json(
+        new ApiResponse(200, { isFollowing: false }, "unfollowed successfully!")
+      );
   } else {
     //follow logic
     await Promise.all([
@@ -78,7 +126,9 @@ export const toggleFollowUnfollow = asyncHandler(async (req, res) => {
     ]);
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "followed successfully!"));
+      .json(
+        new ApiResponse(200, { isFollowing: true }, "followed successfully!")
+      );
   }
 });
 
@@ -86,10 +136,12 @@ export const checkIfUserNameExists = asyncHandler(async (req, res) => {
   const username = req.params.username;
   const user = await User.findOne({ username });
   if (user) {
-    return res.status(409).json(new ApiResponse(409, {}, "user already exists"));
+    return res
+      .status(409)
+      .json(new ApiResponse(409, {available: false}, "user already exists"));
   } else {
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "Username is available"));
+      .json(new ApiResponse(200, {available: true}, "Username is available"));
   }
 });
