@@ -92,8 +92,7 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 
 export const postComment = asyncHandler(async (req, res) => {
   const commenterId = req.user._id;
-  const postId = req.params.postId;
-  const { text } = req.body;
+  const { text, postId } = req.body;
 
   if (!text) {
     throw new ApiError(400, "Please provide valid fields");
@@ -107,7 +106,8 @@ export const postComment = asyncHandler(async (req, res) => {
   const comment = new Comment({
     text,
     author: commenterId,
-    postId,
+    resourceId: postId, // ID of the product/post being commented on
+    resourceType: "Post",
   });
   await comment.save();
 
