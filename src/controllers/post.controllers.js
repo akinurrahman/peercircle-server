@@ -32,6 +32,12 @@ export const addPost = asyncHandler(async (req, res) => {
 export const getAllPosts = asyncHandler(async (req, res) => {
   const userId = req.query.profileId || req.user?._id;
 
+   if (!userId) {
+     return res
+       .status(400)
+       .json(new ApiResponse(400, null, "User ID is required"));
+   }
+
   const user = await User.findById(userId).populate({
     path: "posts",
     populate: {
