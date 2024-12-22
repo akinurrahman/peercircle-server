@@ -19,7 +19,7 @@ const userSchema = new Schema(
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
-    product: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
+    products: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     location: { type: String },
     website_url: { type: String },
