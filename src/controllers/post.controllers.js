@@ -30,17 +30,35 @@ export const addPost = asyncHandler(async (req, res) => {
 });
 
 export const getAllPosts = asyncHandler(async (req, res) => {
-  const userId = req.params.id || req.user?._id;
+  const userId = req.query.profileId || req.user?._id;
 
-  const user = await User.findById(userId).populate("posts");
+  const user = await User.findById(userId).populate({
+    path: "posts",
+    populate: {
+      path: "author",
+      select: "fullName", 
+    },
+  });
+
 
   if (!user.posts || user.posts.length === 0) {
-    throw new ApiError(404, "No posts found");
+  return  res.status(200).json(new ApiResponse(200, [], "No posts found"));
   }
+
+ const response = user.posts.map((post) => ({
+   id: post._id,
+   caption: post.caption,
+   mediaUrl: post.mediaUrl,
+   author: post.author.fullName,
+   likes: post.likes.length,
+   comments: post.comments.length,
+   createdAt: post.createdAt,
+   updatedAt: post.updatedAt,
+ }));
 
   res
     .status(200)
-    .json(new ApiResponse(200, user.posts, "Posts fetched successfully"));
+    .json(new ApiResponse(200, response, "Posts fetched successfully"));
 });
 
 export const likeUnlikePost = asyncHandler(async (req, res) => {

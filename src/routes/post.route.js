@@ -8,8 +8,7 @@ import { addPost, bookMarkPost, deletePost, getAllComments, getAllPosts, likeUnl
 const router = Router()
 
 router.route("/post").post(verifyUser, isEmailVerified, addPost)
-router.route("/my-posts").get(verifyUser, getAllPosts); // to get all of my posts
-router.route("/posts/:id").get(verifyUser, getAllPosts) // to get all of someone elses posts
+router.route("/posts").get(verifyUser, getAllPosts); 
 router.route("/post/like-unlike").patch(verifyUser, likeUnlikePost)
 router.route("/post/comment/:postId").post(verifyUser, isEmailVerified, postComment);
 router.route("/post/comments/:postId").get(verifyUser, getAllComments)
