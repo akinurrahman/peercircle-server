@@ -10,3 +10,23 @@ export const fileUpload = asyncHandler(async (req, res) => {
   }
   return res.status(500).json({ message: "Failed to upload" });
 });
+
+export const fileUploadMultiple = asyncHandler(async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "No Files Uploaded" });
+  }
+
+  const fileUrls = [];
+  for (let file of req.files) {
+    const fileUrl = await uploadToCloudinary(file.path);
+    if (fileUrl) {
+      fileUrls.push(fileUrl.url);
+    }
+  }
+
+  if (fileUrls.length > 0) {
+    return res.status(200).json({ urls: fileUrls });
+  }
+
+  return res.status(500).json({ message: "Failed to upload" });
+});
