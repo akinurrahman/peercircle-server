@@ -14,14 +14,15 @@ const userSchema = new Schema(
     otp: { type: String },
     otpExpires: { type: Date },
     profilePicture: { type: String, default: "" },
-    bio : {type:String},
+    bio: { type: String },
     gender: { type: String, enum: ["male", "female", "other"] },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    product: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
     bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     location: { type: String },
-    website_url : {type: String},
+    website_url: { type: String },
   },
   { timestamps: true }
 );
@@ -51,7 +52,6 @@ userSchema.methods.verifyEmail = function (otp) {
   // Check if OTP matches
   return this.otp === otp;
 };
-
 
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
