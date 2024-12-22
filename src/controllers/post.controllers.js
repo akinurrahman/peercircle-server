@@ -1,6 +1,7 @@
 import { Comment } from "../models/comment.model.js";
 import { Post } from "../models/post.model.js";
 import { User } from "../models/user.model.js";
+import {Product} from '../models/product.model.js'
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -32,35 +33,34 @@ export const addPost = asyncHandler(async (req, res) => {
 export const getAllPosts = asyncHandler(async (req, res) => {
   const userId = req.query.profileId || req.user?._id;
 
-   if (!userId) {
-     return res
-       .status(400)
-       .json(new ApiResponse(400, null, "User ID is required"));
-   }
+  if (!userId) {
+    return res
+      .status(400)
+      .json(new ApiResponse(400, null, "User ID is required"));
+  }
 
   const user = await User.findById(userId).populate({
     path: "posts",
     populate: {
       path: "author",
-      select: "fullName", 
+      select: "fullName",
     },
   });
 
-
   if (!user.posts || user.posts.length === 0) {
-  return  res.status(200).json(new ApiResponse(200, [], "No posts found"));
+    return res.status(200).json(new ApiResponse(200, [], "No posts found"));
   }
 
- const response = user.posts.map((post) => ({
-   id: post._id,
-   caption: post.caption,
-   mediaUrl: post.mediaUrl,
-   author: post.author.fullName,
-   likes: post.likes.length,
-   comments: post.comments.length,
-   createdAt: post.createdAt,
-   updatedAt: post.updatedAt,
- }));
+  const response = user.posts.map((post) => ({
+    id: post._id,
+    caption: post.caption,
+    mediaUrl: post.mediaUrl,
+    author: post.author.fullName,
+    likes: post.likes.length,
+    comments: post.comments.length,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+  }));
 
   res
     .status(200)
@@ -92,27 +92,44 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 
 export const postComment = asyncHandler(async (req, res) => {
   const commenterId = req.user._id;
-  const { text, postId } = req.body;
+  const { text, resourceId, resourceType } = req.body;
 
-  if (!text) {
+  if (!text || !resourceId || !resourceType) {
     throw new ApiError(400, "Please provide valid fields");
   }
 
-  const post = await Post.findById(postId);
-  if (!post) {
-    throw new ApiError(404, "Post not found");
+  // Determine whether it's a post or product comment
+  let resource;
+
+  if (resourceType === "Post") {
+    resource = await Post.findById(resourceId);
+  } else if (resourceType === "Product") {
+    resource = await Product.findById(resourceId);
+  } else {
+    throw new ApiError(
+      400,
+      "Invalid resource type. Must be 'Post' or 'Product'"
+    );
   }
 
+  if (!resource) {
+    throw new ApiError(404, `${resourceType} not found`);
+  }
+
+  // Create a new comment
   const comment = new Comment({
     text,
     author: commenterId,
-    resourceId: postId, // ID of the product/post being commented on
-    resourceType: "Post",
+    resourceId,
+    resourceType,
   });
+
   await comment.save();
 
-  post.comments.push(comment._id);
-  await post.save();
+  // Add the comment to the resource's comments array
+  resource.comments.push(comment._id);
+
+  await resource.save();
 
   res
     .status(201)
