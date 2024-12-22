@@ -10,7 +10,7 @@ const productSchema = new Schema(
       ref: "Category",
       required: true,
     },
-    image: [{ type: String, required: true }],
+    images: [{ type: String, required: true }],
     seller: { type: Schema.Types.ObjectId, ref: "User", required: true },
     condition: { type: String, enum: ["new", "used", "refurbished"] },
     isAvailable: { type: String, enum: ["yes", "no"], default: "yes" },
