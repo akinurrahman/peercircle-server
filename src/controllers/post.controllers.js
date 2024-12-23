@@ -7,16 +7,16 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const addPost = asyncHandler(async (req, res) => {
-  const { caption, mediaUrl } = req.body;
+  const { caption, mediaUrls } = req.body;
   const author = req.user?._id;
 
-  if (!mediaUrl) {
+  if (!mediaUrls) {
     throw new ApiError(400, "Media URL is required");
   }
 
   const post = new Post({
     caption: caption || undefined,
-    mediaUrl,
+    mediaUrls,
     author,
   });
   const savedPost = await post.save();
@@ -54,7 +54,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
   const response = user.posts.map((post) => ({
     id: post._id,
     caption: post.caption,
-    mediaUrl: post.mediaUrl,
+    mediaUrls: post.mediaUrls,
     author: post.author.fullName,
     likes: post.likes.length,
     comments: post.comments.length,

@@ -6,7 +6,7 @@ import { ApiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 
 export const addProduct = asyncHandler(async (req, res) => {
-  const { name, price, description, category, images, condition } = req.body;
+  const { name, price, description, category, mediaUrls, condition } = req.body;
   const seller = req.user._id;
 
   if (!name || !price || !description || !category || !images || !condition) {
@@ -18,7 +18,7 @@ export const addProduct = asyncHandler(async (req, res) => {
     price,
     description,
     category,
-    images,
+    mediaUrls,
     seller,
     condition,
   });
@@ -81,7 +81,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     condition: product.condition,
     isAvailable: product.isAvailable,
     category: product.category,
-    images: product.images,
+    mediaUrls: product.mediaUrls,
     seller: product.seller.fullName,
     likes: product.likes.length,
     comments: product.comments.length,
