@@ -51,3 +51,45 @@ export const getAllCategories = asyncHandler(async (req, res) => {
   const categories = await Category.find();
   res.status(200).json(new ApiResponse(200, categories, "Categories fetched!"));
 });
+
+export const getAllProducts = asyncHandler(async (req, res) => {
+  const userId = req.query.profileId || req.user?._id;
+
+  if (!userId) {
+    return res
+      .status(400)
+      .json(new ApiResponse(400, null, "User ID is required"));
+  }
+
+  const user = await User.findById(userId).populate({
+    path: "products",
+    populate: {
+      path: "seller",
+      select: "fullName",
+    },
+  });
+
+  if (!user.products || user.products.length === 0) {
+    return res.status(200).json(new ApiResponse(200, [], "No Products found"));
+  }
+
+  const response = user.products.map((product) => ({
+    id: product._id,
+    name: product.name,
+    price: product.price,
+    description: product.description,
+    condition: product.condition,
+    isAvailable: product.isAvailable,
+    category: product.category,
+    images: product.images,
+    seller: product.seller.fullName,
+    likes: product.likes.length,
+    comments: product.comments.length,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+  }));
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, response, "products fetched successfully"));
+});
