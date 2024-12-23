@@ -9,7 +9,7 @@ export const addProduct = asyncHandler(async (req, res) => {
   const { name, price, description, category, mediaUrls, condition } = req.body;
   const seller = req.user._id;
 
-  if (!name || !price || !description || !category || !images || !condition) {
+  if (!name || !price || !description || !category || !mediaUrls || !condition) {
     throw new ApiError(400, "Please provide valid fields");
   }
 
