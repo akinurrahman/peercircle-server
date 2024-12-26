@@ -30,7 +30,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
         select: "text author",
         options: { limit: 0 }, // Do not limit comments initially
       })
-      .select("caption mediaUrls likes comments")
+      .select("caption mediaUrls likes comments likes")
       .lean(),
   ]);
 
@@ -68,6 +68,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
       caption: post.caption,
       mediaUrls: post.mediaUrls,
       likeCount: post.likes.length,
+      isLikedByMe: post.likes.some((like) => like.equals(req.user?._id)),
       authorName: post.author?.fullName || "Unknown",
       authorId: post.author?._id || null,
       isMine: currentUser

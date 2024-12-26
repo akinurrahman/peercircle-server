@@ -1,7 +1,7 @@
 import { Comment } from "../models/comment.model.js";
 import { Post } from "../models/post.model.js";
 import { User } from "../models/user.model.js";
-import {Product} from '../models/product.model.js'
+import { Product } from "../models/product.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -68,7 +68,7 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 });
 
 export const likeUnlikePost = asyncHandler(async (req, res) => {
-  const { postId } = req.body;
+  const { postId } = req.params;
   const userId = req.user._id;
 
   // Ensure the post exists
@@ -82,12 +82,25 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
     ? { $pull: { likes: userId } } // Unlike (remove user from likes array)
     : { $addToSet: { likes: userId } }; // Like (add user to likes array only if not already liked)
 
-  // Perform the update in a single atomic operation
-  await Post.findByIdAndUpdate(postId, update, { new: true });
+  // Perform the update in a single atomic operation and get the updated post
+  const updatedPost = await Post.findByIdAndUpdate(postId, update, {
+    new: true,
+  });
 
-  const action = post.likes.includes(userId) ? "Unliked" : "Liked";
+  // Determine the action based on the updated post's likes array
+  const action = updatedPost.likes.includes(userId) ? "Liked" : "Unliked";
 
-  res.status(200).json(new ApiResponse(200, {}, `${action} successfully!`));
+  // Return the updated data
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        isLiked: updatedPost.likes.includes(userId), // Correct the isLiked value
+        likeCount: updatedPost.likes.length, // Correct like count
+      },
+      `${action} successfully!`
+    )
+  );
 });
 
 export const postComment = asyncHandler(async (req, res) => {
