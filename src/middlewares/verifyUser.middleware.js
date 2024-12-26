@@ -9,25 +9,43 @@ export const verifyUser = asyncHandler(async (req, res, next) => {
     req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
-    throw new ApiError(401, "Access denied! Token not found");
+    throw new ApiError(
+      401,
+      "Access denied! Token not found",
+      "TOKEN_NOT_FOUND"
+    );
   }
 
   const decodedToken = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
+
+  if (!decodedToken || !decodedToken._id) {
+    throw new ApiError(
+      401,
+      "Invalid or expired token",
+      "TOKEN_INVALID"
+    );
+  }
+
   const user = await User.findById(decodedToken._id).select(
     "-password -refreshToken"
   );
 
   if (!user) {
-    throw new ApiError(401, "Invalid Access Token");
+    throw new ApiError(401, "User not found", [], "", "USER_NOT_FOUND");
   }
 
   req.user = user;
   next();
 });
 
+
 export const isEmailVerified = asyncHandler(async (req, res, next) => {
-  if (!req.user.isVerified) {
-    throw new ApiError(401, "User is not verified");
+  if (!req.user?.isVerified) {
+    throw new ApiError(
+      401,
+      "Email is not verified! Please verify your email",
+      "EMAIL_NOT_VERIFIED"
+    );
   }
   next();
 });

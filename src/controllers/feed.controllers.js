@@ -39,10 +39,15 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
     ? await User.findById(req.user._id).lean()
     : null;
 
+   
   // Transform posts data
   const enrichedPosts = posts.map((post) => {
-    const isFollowing =
-      currentUser?.followers.includes(post.author?._id) || false;
+  const isFollowing =
+    currentUser?.following?.some(
+      (followedUser) => followedUser.toString() === post.author?._id.toString()
+    ) || false;
+
+     
 
     // Get the total comment count
     const totalComments = post.comments.length;
