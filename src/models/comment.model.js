@@ -12,7 +12,7 @@ const commentSchema = new Schema(
     resourceType: {
       type: String,
       required: true,
-      enum: ["Post", "Product"], // Specify the type of resource
+      enum: ["post", "product"], // Specify the type of resource
     },
     parentComment: {
       type: mongoose.Schema.Types.ObjectId,

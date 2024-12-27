@@ -104,86 +104,89 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 });
 
 export const postComment = asyncHandler(async (req, res) => {
-  const commenterId = req.user._id;
-  const { text, resourceId, resourceType, parentComment } = req.body;
+   const { text, resourceId, resourceType, parentComment } = req.body;
 
-  if (!text || !resourceId || !resourceType) {
-    throw new ApiError(400, "Please provide valid fields");
+   // Validate resourceType
+   if (!["post", "product"].includes(resourceType)) {
+     throw new ApiError(400, "Invalid resource type");
+   }
+
+   // Validate if the user exists
+   const user = await User.findById(req.user?._id);
+   if (!user) {
+     throw new ApiError(404, "User not found");
+   }
+
+   // Check if the resource exists
+   let resource;
+   if (resourceType === "post") {
+     resource = await Post.findById(resourceId);
+   } else if (resourceType === "product") {
+     resource = await Product.findById(resourceId);
+   }
+
+   if (!resource) {
+     throw new ApiError(404, `${resourceType} not found`);
+   }
+
+   // Create a new comment
+   const newComment = new Comment({
+     text,
+     author: user._id,
+     resourceId,
+     resourceType,
+     parentComment: parentComment || null, // Parent comment if any
+   });
+
+   // Save the comment
+   const savedComment = await newComment.save();
+
+   // Respond with the saved comment
+   return res.status(201).json({
+     message: "Comment posted successfully",
+     comment: savedComment,
+   });
+})
+
+export const getAllComments = asyncHandler(async (req, res) => {
+  const { resourceId } = req.params;
+  const { resourceType } = req.query;
+
+  // Validate resourceType
+  if (!["post", "product"].includes(resourceType)) {
+    throw new ApiError(400, "Invalid resource type");
   }
 
-  // Determine whether it's a post or product comment
+  // Check if the resource exists
   let resource;
-
-  if (resourceType === "Post") {
+  if (resourceType === "post") {
     resource = await Post.findById(resourceId);
-  } else if (resourceType === "Product") {
+  } else if (resourceType === "product") {
     resource = await Product.findById(resourceId);
-  } else {
-    throw new ApiError(
-      400,
-      "Invalid resource type. Must be 'Post' or 'Product'"
-    );
   }
 
   if (!resource) {
     throw new ApiError(404, `${resourceType} not found`);
   }
 
-  // Check if the parent comment exists (for nested comment case)
-  let parentCommentDocument = null;
-  if (parentComment) {
-    parentCommentDocument = await Comment.findById(parentComment);
-    if (!parentCommentDocument) {
-      throw new ApiError(404, "Parent comment not found");
-    }
-  }
+  // Get all comments for the resource
+  const comments = await Comment.find({ resourceId, resourceType })
+    .populate("author", "fullName username") // Populate author details (full name, username)
+    .sort({ createdAt: -1 }); // Sorting comments by creation date (newest first)
 
-  // Create a new comment
-  const comment = new Comment({
-    text,
-    author: commenterId,
-    resourceId,
-    resourceType,
-    parentComment: parentComment || null, // Only set parentComment if it's a reply
-  });
-
-  await comment.save();
-
-  // Add the comment to the resource's comments array
-  resource.comments.push(comment._id);
-
-  await resource.save();
-
-  // If it's a nested comment, add the new comment to the parent comment's replies (optional)
-  if (parentComment) {
-    parentCommentDocument.replies.push(comment._id);
-    await parentCommentDocument.save();
-  }
-
-  res
-    .status(201)
-    .json(new ApiResponse(201, comment, "Comment added successfully!"));
-});
-
-export const getAllComments = asyncHandler(async (req, res) => {
-  const postId = req.params?.postId;
-
-  const post = await Post.findById(postId).populate({
-    path: "comments",
-    populate: {
-      path: "author",
-      select: "fullName profilePicture",
-    },
-  });
-  if (post.comments.length === 0) {
-    throw new ApiError(404, "No comments found");
-  }
-
-  res
-    .status(200)
-    .json(
-      new ApiResponse(200, post.comments, "Comments fetched successfully!")
+  // Build nested comments structure
+  const commentsWithNested = comments.map((comment) => {
+    // Add nested comments (if any)
+    comment._doc.nestedComments = comments.filter(
+      (c) => String(c.parentComment) === String(comment._id)
     );
+    return comment;
+  });
+
+  return res.status(200).json({
+    message: "Comments fetched successfully",
+    comments: commentsWithNested,
+  });
 });
 
 export const bookMarkPost = asyncHandler(async (req, res) => {
