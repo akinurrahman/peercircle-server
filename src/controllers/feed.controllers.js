@@ -12,7 +12,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req);
 
   // Fetch total posts count and posts with populated fields
-  const [totalPosts, posts] = await Promise.all([
+  const [totalPosts, posts, user] = await Promise.all([
     Post.countDocuments(),
     Post.find()
       .skip(skip)
@@ -32,6 +32,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
       })
       .select("caption mediaUrls likes comments likes")
       .lean(),
+    User.findById(req.user._id).lean(),
   ]);
 
   // Fetch the current user to check following status (if `req.user` exists)
@@ -39,18 +40,19 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
     ? await User.findById(req.user._id).lean()
     : null;
 
-   
   // Transform posts data
   const enrichedPosts = posts.map((post) => {
-  const isFollowing =
-    currentUser?.following?.some(
-      (followedUser) => followedUser.toString() === post.author?._id.toString()
-    ) || false;
-
-     
+    const isFollowing =
+      currentUser?.following?.some(
+        (followedUser) =>
+          followedUser.toString() === post.author?._id.toString()
+      ) || false;
 
     // Get the total comment count
     const totalComments = post.comments.length;
+    const isBookmarkedByMe = user.bookmarks.some(
+      (bookmark) => bookmark.toString() === post._id.toString()
+    );
 
     // Shuffle comments and pick 2 random comments
     const randomComments = shuffleArray(post.comments)
@@ -69,6 +71,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
       mediaUrls: post.mediaUrls,
       likeCount: post.likes.length,
       isLikedByMe: post.likes.some((like) => like.equals(req.user?._id)),
+      isBookmarkedByMe,
       authorName: post.author?.fullName || "Unknown",
       authorId: post.author?._id || null,
       isMine: currentUser

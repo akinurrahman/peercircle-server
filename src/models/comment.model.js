@@ -14,6 +14,11 @@ const commentSchema = new Schema(
       required: true,
       enum: ["Post", "Product"], // Specify the type of resource
     },
+    parentComment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+    }, // Reference to parent comment for nested comments
   },
   { timestamps: true }
 );

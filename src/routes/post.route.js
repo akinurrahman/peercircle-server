@@ -12,7 +12,7 @@ router.route("/post").get(verifyUser, getAllPosts);
 router.route("/post/like-unlike/:postId").patch(verifyUser, likeUnlikePost)
 router.route("/post/comment").post(verifyUser, isEmailVerified, postComment);
 router.route("/post/comments/:postId").get(verifyUser, getAllComments)
-router.route("/post/bookmark/:postId").post(verifyUser, bookMarkPost)
+router.route("/post/bookmark/:postId").patch(verifyUser, bookMarkPost)
 router.route("/post/delete/:postId").delete(verifyUser, deletePost)
 
 export default router

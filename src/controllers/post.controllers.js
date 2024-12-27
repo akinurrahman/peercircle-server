@@ -105,7 +105,7 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 
 export const postComment = asyncHandler(async (req, res) => {
   const commenterId = req.user._id;
-  const { text, resourceId, resourceType } = req.body;
+  const { text, resourceId, resourceType, parentComment } = req.body;
 
   if (!text || !resourceId || !resourceType) {
     throw new ApiError(400, "Please provide valid fields");
@@ -129,12 +129,22 @@ export const postComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, `${resourceType} not found`);
   }
 
+  // Check if the parent comment exists (for nested comment case)
+  let parentCommentDocument = null;
+  if (parentComment) {
+    parentCommentDocument = await Comment.findById(parentComment);
+    if (!parentCommentDocument) {
+      throw new ApiError(404, "Parent comment not found");
+    }
+  }
+
   // Create a new comment
   const comment = new Comment({
     text,
     author: commenterId,
     resourceId,
     resourceType,
+    parentComment: parentComment || null, // Only set parentComment if it's a reply
   });
 
   await comment.save();
@@ -143,6 +153,12 @@ export const postComment = asyncHandler(async (req, res) => {
   resource.comments.push(comment._id);
 
   await resource.save();
+
+  // If it's a nested comment, add the new comment to the parent comment's replies (optional)
+  if (parentComment) {
+    parentCommentDocument.replies.push(comment._id);
+    await parentCommentDocument.save();
+  }
 
   res
     .status(201)
@@ -187,15 +203,19 @@ export const bookMarkPost = asyncHandler(async (req, res) => {
     : { $push: { bookmarks: postId } };
   const updatedUser = await User.findByIdAndUpdate(userId, update, {
     new: true,
-  }).populate("bookmarks");
+  });
 
   const action = isBookmarked ? "Unbookmarked" : "Bookmarked";
 
-  res
-    .status(200)
-    .json(
-      new ApiResponse(200, updatedUser.bookmarks, `${action} successfully!`)
-    );
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        isBookmarked: updatedUser.bookmarks.includes(postId),
+      },
+      `${action} successfully!`
+    )
+  );
 });
 
 export const deletePost = asyncHandler(async (req, res) => {
