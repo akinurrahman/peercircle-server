@@ -8,12 +8,14 @@ import {
   verifyEmail,
 } from "../controllers/auth.controllers.js";
 import {
+  attachUserIfLoggedIn,
   isEmailVerified,
   verifyUser,
 } from "../middlewares/verifyUser.middleware.js";
 import {
   checkIfUserNameExists,
   editProfile,
+  getBasicProfileInfo,
   getProfile,
   toggleFollowUnfollow,
 } from "../controllers/profile.controllers.js";
@@ -31,6 +33,7 @@ router.route("/resend-otp").post(verifyUser, resendOtp);
 // profile
 router.route("/profile").patch(verifyUser, isEmailVerified, editProfile);
 router.route("/profile/:id?").get(verifyUser, getProfile);
+router.route("/basic-profile").get(attachUserIfLoggedIn, getBasicProfileInfo);
 router
   .route("/toggle-follow-unfollow/:id")
   .patch(verifyUser, isEmailVerified, toggleFollowUnfollow);
