@@ -21,15 +21,15 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
         path: "author",
         select: "fullName profilePicture username _id",
       })
-      .populate({
-        path: "comments",
-        populate: {
-          path: "author",
-          select: "fullName profilePicture ",
-        },
-        select: "text author",
-        options: { limit: 0 }, // Do not limit comments initially
-      })
+      // .populate({
+      //   path: "comments",
+      //   populate: {
+      //     path: "author",
+      //     select: "fullName profilePicture ",
+      //   },
+      //   select: "text author",
+      //   options: { limit: 0 }, // Do not limit comments initially
+      // })
       .select("caption mediaUrls likes comments likes")
       .lean(),
     User.findById(req.user._id).lean(),

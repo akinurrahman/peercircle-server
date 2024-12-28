@@ -6,7 +6,7 @@ const postSchema = new Schema(
     mediaUrls: [{ type: String, required: true }],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "PostComment" }],
   },
   { timestamps: true }
 );

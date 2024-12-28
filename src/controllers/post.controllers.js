@@ -1,7 +1,7 @@
-import { Comment } from "../models/comment.model.js";
 import { Post } from "../models/post.model.js";
 import { User } from "../models/user.model.js";
-import { Product } from "../models/product.model.js";
+import { PostComment } from "../models/post-comment.model.js";
+
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -103,92 +103,6 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
   );
 });
 
-export const postComment = asyncHandler(async (req, res) => {
-   const { text, resourceId, resourceType, parentComment } = req.body;
-
-   // Validate resourceType
-   if (!["post", "product"].includes(resourceType)) {
-     throw new ApiError(400, "Invalid resource type");
-   }
-
-   // Validate if the user exists
-   const user = await User.findById(req.user?._id);
-   if (!user) {
-     throw new ApiError(404, "User not found");
-   }
-
-   // Check if the resource exists
-   let resource;
-   if (resourceType === "post") {
-     resource = await Post.findById(resourceId);
-   } else if (resourceType === "product") {
-     resource = await Product.findById(resourceId);
-   }
-
-   if (!resource) {
-     throw new ApiError(404, `${resourceType} not found`);
-   }
-
-   // Create a new comment
-   const newComment = new Comment({
-     text,
-     author: user._id,
-     resourceId,
-     resourceType,
-     parentComment: parentComment || null, // Parent comment if any
-   });
-
-   // Save the comment
-   const savedComment = await newComment.save();
-
-   // Respond with the saved comment
-   return res.status(201).json({
-     message: "Comment posted successfully",
-     comment: savedComment,
-   });
-})
-
-export const getAllComments = asyncHandler(async (req, res) => {
-  const { resourceId } = req.params;
-  const { resourceType } = req.query;
-
-  // Validate resourceType
-  if (!["post", "product"].includes(resourceType)) {
-    throw new ApiError(400, "Invalid resource type");
-  }
-
-  // Check if the resource exists
-  let resource;
-  if (resourceType === "post") {
-    resource = await Post.findById(resourceId);
-  } else if (resourceType === "product") {
-    resource = await Product.findById(resourceId);
-  }
-
-  if (!resource) {
-    throw new ApiError(404, `${resourceType} not found`);
-  }
-
-  // Get all comments for the resource
-  const comments = await Comment.find({ resourceId, resourceType })
-    .populate("author", "fullName username") // Populate author details (full name, username)
-    .sort({ createdAt: -1 }); // Sorting comments by creation date (newest first)
-
-  // Build nested comments structure
-  const commentsWithNested = comments.map((comment) => {
-    // Add nested comments (if any)
-    comment._doc.nestedComments = comments.filter(
-      (c) => String(c.parentComment) === String(comment._id)
-    );
-    return comment;
-  });
-
-  return res.status(200).json({
-    message: "Comments fetched successfully",
-    comments: commentsWithNested,
-  });
-});
-
 export const bookMarkPost = asyncHandler(async (req, res) => {
   const postId = req.params.postId;
   const userId = req.user._id;
@@ -240,7 +154,87 @@ export const deletePost = asyncHandler(async (req, res) => {
   user.posts.pull(postId);
   await user.save();
 
-  await Comment.deleteMany({ postId });
+  // await Comment.deleteMany({ postId });
 
   res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
+});
+
+export const addCommentOnPost = asyncHandler(async (req, res) => {
+  const { postId, comment, commentId, reply } = req.body;
+  const userId = req.user?._id;
+
+  if (commentId) {
+    // Handle reply to a comment
+    if (!userId || !reply || !commentId) {
+      throw new ApiError(400, "Missing required fields for reply");
+    }
+
+    const parentComment = await PostComment.findById(commentId);
+    if (!parentComment) {
+      throw new ApiError(404, "Parent comment not found");
+    }
+
+    // Create a new reply object
+    const newReply = {
+      userId,
+      comment: reply,
+      createdAt: new Date(),
+    };
+
+    parentComment.replies.push(newReply);
+    await parentComment.save();
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, parentComment, "Reply added successfully!"));
+  } else {
+    // Handle new comment
+    if (!postId || !userId || !comment) {
+      throw new ApiError(400, "Missing required fields for comment");
+    }
+
+    const newComment = new PostComment({
+      postId,
+      userId,
+      comment,
+      replies: [], // Initially no replies
+    });
+
+    // Save the new comment to the PostComment model
+    const savedComment = await newComment.save();
+
+    // Add the comment ID to the Post model
+    await Post.findByIdAndUpdate(
+      postId,
+      { $push: { comments: savedComment._id } },
+      { new: true }
+    );
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, savedComment, "Comment added successfully!"));
+  }
+});
+
+export const getAllCommentsForPost = asyncHandler(async (req, res) => {
+  const { postId } = req.query;
+
+  if (!postId) {
+    return res
+      .status(400)
+      .json(new ApiResponse(400, null, "Post ID is required"));
+  }
+
+  const comments = await PostComment.find({ postId })
+    .populate("userId", "fullName profilePicture")
+    .populate("replies.userId", "fullName profilePicture")
+    .lean();
+
+  if (comments.length === 0) {
+    return res.status(200).json(new ApiResponse(200, [], "No comments found"));
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, comments, "Comments fetched successfully!"));
 });
