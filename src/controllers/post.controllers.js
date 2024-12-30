@@ -181,12 +181,23 @@ export const addCommentOnPost = asyncHandler(async (req, res) => {
       createdAt: new Date(),
     };
 
+    // Add the new reply to the parent comment's replies array
     parentComment.replies.push(newReply);
     await parentComment.save();
 
+    // Fetch the newly added reply, and populate user info
+    const populatedReply = await PostComment.findById(commentId)
+      .populate("replies.userId", "fullName profilePicture")
+      .select("replies -_id") // Only select the replies field
+      .lean();
+
+    // Get the last added reply
+    const replyToSend =
+      populatedReply.replies[populatedReply.replies.length - 1];
+
     res
       .status(201)
-      .json(new ApiResponse(201, parentComment, "Reply added successfully!"));
+      .json(new ApiResponse(201, replyToSend, "Reply added successfully!"));
   } else {
     // Handle new comment
     if (!postId || !userId || !comment) {
@@ -210,11 +221,19 @@ export const addCommentOnPost = asyncHandler(async (req, res) => {
       { new: true }
     );
 
+    // Populate user information (fullName, profilePicture) for the new comment
+    const populatedComment = await PostComment.findById(
+      savedComment._id
+    ).populate("userId", "fullName profilePicture");
+
     res
       .status(201)
-      .json(new ApiResponse(201, savedComment, "Comment added successfully!"));
+      .json(
+        new ApiResponse(201, populatedComment, "Comment added successfully!")
+      );
   }
 });
+
 
 export const getAllCommentsForPost = asyncHandler(async (req, res) => {
   const { postId } = req.query;
