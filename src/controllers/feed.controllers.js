@@ -21,15 +21,6 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
         path: "author",
         select: "fullName profilePicture username _id",
       })
-      // .populate({
-      //   path: "comments",
-      //   populate: {
-      //     path: "author",
-      //     select: "fullName profilePicture ",
-      //   },
-      //   select: "text author",
-      //   options: { limit: 0 }, // Do not limit comments initially
-      // })
       .select("caption mediaUrls likes comments likes")
       .lean(),
     User.findById(req.user._id).lean(),
@@ -50,21 +41,11 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
 
     // Get the total comment count
     const totalComments = post.comments.length;
-    const isBookmarkedByMe = user.bookmarks.some(
+    const isBookmarkedByMe = user.bookmarks?.some(
       (bookmark) => bookmark.toString() === post._id.toString()
     );
 
-    // Shuffle comments and pick 2 random comments
-    const randomComments = shuffleArray(post.comments)
-      .slice(0, 2)
-      .map((comment) => ({
-        commentId: comment._id,
-        text: comment.text,
-        commenterName: comment.author?.fullName || "Unknown",
-        commenterId: comment.author?._id || null,
-        profilePicture: comment.author?.profilePicture || "",
-      }));
-
+  
     return {
       _id: post._id,
       caption: post.caption,
@@ -81,7 +62,6 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
       profilePicture: post.author?.profilePicture || "",
       commentCount: totalComments,
       isFollowing,
-      randomComments,
     };
   });
 
