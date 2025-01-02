@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getSuggestedUsers,
   loginUser,
   logoutUser,
   refreshAccesToken,
@@ -40,5 +41,7 @@ router
 router
   .route("/check-username/:username")
   .get(verifyUser, isEmailVerified, checkIfUserNameExists);
+
+  router.route("/suggested-users").get(attachUserIfLoggedIn, getSuggestedUsers)
 
 export default router;

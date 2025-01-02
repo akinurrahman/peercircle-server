@@ -14,7 +14,6 @@ const options = {
   path: "/",
 };
 
-
 export const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, password } = req.body;
 
@@ -120,7 +119,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({
-    email
+    email,
   });
 
   if (!user) {
@@ -230,4 +229,24 @@ export const refreshAccesToken = asyncHandler(async (req, res) => {
       "Invalid or expired refresh token. Please login again."
     );
   }
+});
+
+export const getSuggestedUsers = asyncHandler(async (req, res) => {
+  const currentUser = req.user;
+
+  // Fetch suggested users for any user (logged in or not)
+  const suggestedUsers = await User.find({
+    _id: { $ne: currentUser ? currentUser._id : null }, // Exclude current user if logged in
+    isVerified: true,
+  }).select("fullName profilePicture username _id");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { suggestedUsers },
+        "Suggested users fetched successfully"
+      )
+    );
 });
