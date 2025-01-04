@@ -14,6 +14,8 @@ const io = new Server(server, {
 
 const userSocketMap = {}; // Map to store user socket connections
 
+export const getSocketId = (userId) => userSocketMap[userId];
+
 io.on("connection", (socket) => {
   const userId = socket.handshake.query.userId;
   if (userId) {

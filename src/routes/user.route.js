@@ -34,7 +34,7 @@ router.route("/resend-otp").post(verifyUser, resendOtp);
 // profile
 router.route("/profile").patch(verifyUser, isEmailVerified, editProfile);
 router.route("/profile/:id?").get(verifyUser, getProfile);
-router.route("/basic-profile").get(attachUserIfLoggedIn, getBasicProfileInfo);
+router.route("/basic-profile").get(verifyUser, getBasicProfileInfo);
 router
   .route("/toggle-follow-unfollow/:id")
   .patch(verifyUser, isEmailVerified, toggleFollowUnfollow);

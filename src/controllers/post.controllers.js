@@ -5,6 +5,7 @@ import { PostComment } from "../models/post-comment.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { getSocketId, io } from "../socket/socket.js";
 
 export const addPost = asyncHandler(async (req, res) => {
   const { caption, mediaUrls } = req.body;
@@ -89,6 +90,22 @@ export const likeUnlikePost = asyncHandler(async (req, res) => {
 
   // Determine the action based on the updated post's likes array
   const action = updatedPost.likes.includes(userId) ? "Liked" : "Unliked";
+
+  const user = await User.findById(userId).select("fullName profilePicture username");
+  const ownerId = post.author.toString();
+  if(ownerId !== userId) {
+    const notification = {
+      type: "like",
+      userId,
+      userDetails : user,
+      postId: post._id,
+      message: `${user.fullName} ${action} your post`,
+    }
+    const postOwnerSocketId = getSocketId(ownerId);
+    if(postOwnerSocketId) {
+      io.to(postOwnerSocketId).emit("notification", notification);
+    }
+  }
 
   // Return the updated data
   res.status(200).json(

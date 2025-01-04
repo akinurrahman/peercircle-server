@@ -9,21 +9,17 @@ import { shuffleArray } from "../utils/index.js";
 export const fetchAllPostAndProducts = asyncHandler(async (req, res) => {});
 
 export const fetchAllPosts = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPaginationParams(req);
-
-  // Fetch total posts count and posts with populated fields
-  const [totalPosts, posts, user] = await Promise.all([
-    Post.countDocuments(),
+  // Fetch total posts count and posts with populated fields, sorted by `createdAt` in descending order
+  const [ posts, user] = await Promise.all([
     Post.find()
-      .skip(skip)
-      .limit(limit)
       .populate({
         path: "author",
         select: "fullName profilePicture username _id",
       })
-      .select("caption mediaUrls likes comments likes")
+      .select("caption mediaUrls likes comments likes createdAt")
+      .sort({ createdAt: -1 }) // Sort by createdAt in descending order
       .lean(),
-    User.findById(req.user._id).lean(),
+    User.findById(req.user?._id).lean(), 
   ]);
 
   // Fetch the current user to check following status (if `req.user` exists)
@@ -41,11 +37,10 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
 
     // Get the total comment count
     const totalComments = post.comments.length;
-    const isBookmarkedByMe = user.bookmarks?.some(
+    const isBookmarkedByMe = user?.bookmarks?.some(
       (bookmark) => bookmark.toString() === post._id.toString()
     );
 
-  
     return {
       _id: post._id,
       caption: post.caption,
@@ -65,20 +60,13 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
     };
   });
 
-  // Get pagination info
-  const paginationInfo = getPaginationInfo(totalPosts, page, limit);
-
-  // Send response
   res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        { posts: enrichedPosts, paginationInfo },
-        "Fetched successfully!"
-      )
+      new ApiResponse(200, { posts: enrichedPosts }, "Fetched successfully!")
     );
 });
+
 
 export const fetchAllProducts = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req);
