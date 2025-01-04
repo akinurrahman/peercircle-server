@@ -1,74 +1,3 @@
-// export const getMessage = asyncHandler(async (req, res) => {
-//   const senderId = req.user._id; // Logged-in user's ID
-//   const receiverId = req.params.id; // Other participant's ID
-
-//   const conversation = await Conversation.findOne({
-//     participants: { $all: [senderId, receiverId] },
-//   })
-//     .populate({
-//       path: "messages",
-//       populate: {
-//         path: "senderId receiverId",
-//         select: "fullName profilePicture",
-//       },
-//     })
-//     .lean();
-
-//   if (!conversation) {
-//     return res
-//       .status(200)
-//       .json(new ApiResponse(200, [], "Conversation not found"));
-//   }
-
-//   const messages = conversation.messages.map((message) => {
-//     const user = message.senderId; // Set the sender of the message as userId
-
-//     return {
-//       createdAt: message.createdAt,
-//       message: message.message,
-//       _id: user._id, // Use senderId as userId
-//       fullName: user.fullName,
-//       profilePicture: user.profilePicture,
-//     };
-//   });
-
-//   const receiverInfo = await User.findById(receiverId).select(
-//     "fullName username profilePicture _id"
-//   );
-
-//   return res
-//     .status(200)
-//     .json(
-//       new ApiResponse(200, { messages, receiverInfo }, "Conversation found")
-//     );
-// });
-
-// export const getAllConversations = asyncHandler(async(req,res)=>{
-//   const userId = req.user._id;
-
-//   const conversations = await Conversation.find({
-//     participants: userId,
-//   })
-//     .populate({
-//       path: "participants",
-//       select: "profilePicture fullName username",
-//     })
-//     .lean();
-
-//     // Extract the details of the other participant
-//     const conversationsData = conversations.map((conversation) => {
-//       const participants = conversation.participants.find(
-//         (participant) => participant._id.toString() !== userId.toString()
-//       );
-//       return {
-//         _id: conversation._id,
-//         participants,
-//       };
-//     });
-
-//     res.status(200).json(new ApiResponse(200, conversationsData, "Conversations fetched successfully"));
-// })
-
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { ApiError } from "../utils/apiError.js";
@@ -76,7 +5,6 @@ import { getSocketId, io } from "../socket/socket.js";
 
 import { Conversation } from "../models/conversition.model.js";
 import { Message } from "../models/message.model.js";
-import { User } from "../models/user.model.js";
 
 // send message
 export const sendMessage = asyncHandler(async (req, res) => {
@@ -174,3 +102,37 @@ export const getMessage = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, messages, "Conversation found"));
 });
+
+// get all conversastions
+export const getAllConversations = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const conversations = await Conversation.find({
+    participants: userId,
+  })
+  .populate({
+    path: "participants",
+    select: "profilePicture fullName username",
+  })
+  .lean()
+
+  if(!conversations){
+    return res.status(200).json(new ApiResponse(200, [], "Conversations not found"));
+  }
+
+   const response = conversations.map((conversation) => {
+     const otherParticipant = conversation.participants.find(
+       (participant) => participant._id.toString() !== userId.toString()
+     );
+
+     return {
+       conversationId: conversation._id,
+       userId: otherParticipant?._id,
+       fullName: otherParticipant?.fullName,
+       username: otherParticipant?.username,
+       profilePicture: otherParticipant?.profilePicture,
+     };
+   });
+
+  res.status(200).json(new ApiResponse(200, response, "Conversations fetched successfully"));
+})
