@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllConversations, getMessage, sendMessage } from "../controllers/message.controllers.js";
+import {  getAllConversations, getMessage, sendMessage } from "../controllers/message.controllers.js";
 import {
   isEmailVerified,
   verifyUser,
@@ -8,7 +8,7 @@ import {
 const router = Router();
 
 router.route("/message").post(verifyUser, isEmailVerified, sendMessage);
-router.route("/message/:id").get(verifyUser,isEmailVerified,getMessage)
+router.route("/message").get(verifyUser,isEmailVerified,getMessage)
 router.route('/conversations').get(verifyUser,isEmailVerified,getAllConversations)
 
 export default router;
