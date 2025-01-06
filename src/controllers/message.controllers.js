@@ -6,7 +6,6 @@ import { getSocketId, io } from "../socket/socket.js";
 import { Conversation } from "../models/conversition.model.js";
 import { Message } from "../models/message.model.js";
 
-// send message
 export const sendMessage = asyncHandler(async (req, res) => {
   const senderId = req.user?._id;
   const { receiverId, message } = req.body;
@@ -15,19 +14,19 @@ export const sendMessage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Missing required fields");
   }
 
-  // find the conversation
+  // Find the conversation
   let conversation = await Conversation.findOne({
     participants: { $all: [senderId.toString(), receiverId] },
   });
 
-  // establish conversation if it doesn't exit
+  // Establish conversation if it doesn't exist
   if (!conversation) {
     conversation = await Conversation.create({
       participants: [senderId, receiverId],
     });
   }
 
-  // create new message and add it to the conversation
+  // Create new message and add it to the conversation
   const newMessage = await Message.create({
     senderId,
     receiverId,
@@ -49,10 +48,10 @@ export const sendMessage = asyncHandler(async (req, res) => {
     profilePicture: req.user?.profilePicture,
   };
 
-  // socket implementation
-  const recieverSocketId = getSocketId(receiverId);
-  if (recieverSocketId) {
-    io.to(recieverSocketId).emit("newMessage", response);
+  // Emit the message to the receiver's socket
+  const receiverSocketId = getSocketId(receiverId);
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit("newMessage", response);
   }
 
   res
@@ -110,29 +109,33 @@ export const getAllConversations = asyncHandler(async (req, res) => {
   const conversations = await Conversation.find({
     participants: userId,
   })
-  .populate({
-    path: "participants",
-    select: "profilePicture fullName username",
-  })
-  .lean()
+    .populate({
+      path: "participants",
+      select: "profilePicture fullName username",
+    })
+    .lean();
 
-  if(!conversations){
-    return res.status(200).json(new ApiResponse(200, [], "Conversations not found"));
+  if (!conversations) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "Conversations not found"));
   }
 
-   const response = conversations.map((conversation) => {
-     const otherParticipant = conversation.participants.find(
-       (participant) => participant._id.toString() !== userId.toString()
-     );
+  const response = conversations.map((conversation) => {
+    const otherParticipant = conversation.participants.find(
+      (participant) => participant._id.toString() !== userId.toString()
+    );
 
-     return {
-       conversationId: conversation._id,
-       userId: otherParticipant?._id,
-       fullName: otherParticipant?.fullName,
-       username: otherParticipant?.username,
-       profilePicture: otherParticipant?.profilePicture,
-     };
-   });
+    return {
+      conversationId: conversation._id,
+      userId: otherParticipant?._id,
+      fullName: otherParticipant?.fullName,
+      username: otherParticipant?.username,
+      profilePicture: otherParticipant?.profilePicture,
+    };
+  });
 
-  res.status(200).json(new ApiResponse(200, response, "Conversations fetched successfully"));
-})
+  res
+    .status(200)
+    .json(new ApiResponse(200, response, "Conversations fetched successfully"));
+});
