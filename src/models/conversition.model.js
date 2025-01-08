@@ -14,8 +14,9 @@ const conversationSchema = new Schema(
         ref: "Message",
       },
     ],
+   
   },
   { timestamps: true }
 );
 
-export const Conversation = model("Conversition", conversationSchema)
+export const Conversation = model("Conversation", conversationSchema)
