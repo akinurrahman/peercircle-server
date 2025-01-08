@@ -3,6 +3,7 @@ import {
   createOrFetchConversation,
   getAllConversations,
   getMessage,
+  markMessageAsSeen,
   sendMessage,
 } from "../controllers/message.controllers.js";
 import {
@@ -20,5 +21,8 @@ router
 router
   .route("/conversation")
   .post(verifyUser, isEmailVerified, createOrFetchConversation);
+router
+  .route("/conversation/:conversationId")
+  .patch(verifyUser, isEmailVerified, markMessageAsSeen);
 
 export default router;
