@@ -22,16 +22,6 @@ io.on("connection", (socket) => {
     userSocketMap[userId] = socket.id;
   }
 
-  socket.on("joinChat", ({ userId, conversationId }) => {
-    activeConversations.set(userId, conversationId);
-    console.log(`User ${userId} joined conversation ${conversationId}`);
-  });
-
-  socket.on("leaveChat", ({ userId }) => {
-    activeConversations.delete(userId);
-    console.log(`User ${userId} left chat`);
-  });
-
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   socket.on("disconnect", () => {
