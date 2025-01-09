@@ -44,6 +44,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     createdAt: newMessage.createdAt,
     fullName: req.user.fullName,
     profilePicture: req.user?.profilePicture,
+    seen: newMessage.seen,
   };
 
   // Emit the new message to the receiver (if applicable)
@@ -57,6 +58,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
       createdAt: newMessage.createdAt,
       fullName: req.user.fullName,
       profilePicture: req.user?.profilePicture,
+      seen: newMessage.seen,
     });
   }
 
@@ -78,6 +80,7 @@ export const getMessage = asyncHandler(async (req, res) => {
   const conversation = await Conversation.findById(conversationId)
     .populate({
       path: "messages",
+      select: "message senderId seen createdAt",
       populate: {
         path: "senderId",
         select: "fullName profilePicture",
@@ -89,8 +92,6 @@ export const getMessage = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Conversation not found");
   }
 
-
-
   const messages = conversation.messages.map((msg) => ({
     _id: msg._id,
     conversationId: conversation._id,
@@ -99,6 +100,7 @@ export const getMessage = asyncHandler(async (req, res) => {
     createdAt: msg.createdAt,
     fullName: msg.senderId.fullName,
     profilePicture: msg.senderId.profilePicture || null,
+    seen : msg.seen
   }));
 
   res.status(200).json(new ApiResponse(200, messages, "Conversation found"));
@@ -112,8 +114,8 @@ export const getAllConversations = asyncHandler(async (req, res) => {
     participants: userId,
   })
     .populate({
-      path: "participants",
-      select: "profilePicture fullName username",
+      path: "participants messages",
+      select: "profilePicture fullName username seen",
     })
     .lean();
 
@@ -122,7 +124,11 @@ export const getAllConversations = asyncHandler(async (req, res) => {
       (participant) => participant._id.toString() !== userId.toString()
     );
 
-
+    // Calculate unseen messages count
+    const unseenCount = conversation.messages.filter(
+      (message) =>
+        message.seen === false
+    ).length;
 
     return {
       conversationId: conversation._id,
@@ -130,6 +136,7 @@ export const getAllConversations = asyncHandler(async (req, res) => {
       fullName: otherParticipant?.fullName,
       username: otherParticipant?.username,
       profilePicture: otherParticipant?.profilePicture,
+      unseenCount
     };
   });
 
@@ -180,4 +187,23 @@ export const createOrFetchConversation = asyncHandler(async (req, res) => {
         "Conversation already exists"
       )
     );
+});
+
+export const markMessageAsSeen = asyncHandler(async (req, res) => {
+  const conversationId = req.params.conversationId;
+
+  // Find the conversation by ID
+  const conversation =
+    await Conversation.findById(conversationId).populate("messages");
+
+  if (!conversation) {
+    throw new ApiError(404, "Conversation not found");
+  }
+
+  await Message.updateMany(
+    { _id: { $in: conversation.messages }, seen: false }, // Find messages in this conversation that are not yet seen
+    { $set: { seen: true } } // Set 'seen' to true
+  );
+
+  res.status(200).json(new ApiResponse(200, {}, "Messages marked as seen"));
 });
