@@ -147,19 +147,3 @@ export const checkIfUserNameExists = asyncHandler(async (req, res) => {
 });
 
 
-export const getBasicProfileInfo = asyncHandler(async(req, res) => {
-  const id = req.user?._id;
-
-  const user = await User.findById(id)
-  const response = {
-    _id: user._id,
-    fullName : user.fullName,
-    username : user.username,
-    profilePicture : user.profilePicture,
-    email : user.email,
-  }
-
-  res
-    .status(200)
-    .json(new ApiResponse(200, response, "Profile fetched successfully"));
-})

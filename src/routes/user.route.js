@@ -3,7 +3,7 @@ import {
   getSuggestedUsers,
   loginUser,
   logoutUser,
-  refreshAccesToken,
+  refreshAccessToken,
   registerUser,
   resendOtp,
   verifyEmail,
@@ -16,7 +16,6 @@ import {
 import {
   checkIfUserNameExists,
   editProfile,
-  getBasicProfileInfo,
   getProfile,
   toggleFollowUnfollow,
 } from "../controllers/profile.controllers.js";
@@ -28,13 +27,12 @@ router.route("/register").post(registerUser);
 router.route("/verify-email").post(verifyEmail);
 router.route("/login").post(loginUser);
 router.route("/logout").post(verifyUser, logoutUser);
-router.route("/refresh-token").post(refreshAccesToken);
+router.route("/refresh").post(refreshAccessToken);
 router.route("/resend-otp").post(verifyUser, resendOtp);
 
 // profile
 router.route("/profile").patch(verifyUser, isEmailVerified, editProfile);
 router.route("/profile/:id?").get(verifyUser, getProfile);
-router.route("/basic-profile").get(verifyUser, getBasicProfileInfo);
 router
   .route("/toggle-follow-unfollow/:id")
   .patch(verifyUser, isEmailVerified, toggleFollowUnfollow);

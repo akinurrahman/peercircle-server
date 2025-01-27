@@ -8,10 +8,10 @@ import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
 const options = {
-  domain: ".vercel.app",
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "None",
-  path: "/",
+  httpOnly: true,
+  secure: true,
+  sameSite: "Strict", // Prevent CSRF attacks by restricting cookie transmission
+  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5),
 };
 
 export const registerUser = asyncHandler(async (req, res) => {
@@ -40,8 +40,6 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .cookie("isVerified", false, options)
-    .cookie("email", email, options)
     .json(
       new ApiResponse(200, {}, "User registered. Check your email for OTP.")
     );
@@ -79,7 +77,6 @@ export const verifyEmail = asyncHandler(async (req, res) => {
 
   // Return a success response
   return res
-    .cookie("isVerified", true, options)
     .status(200)
     .json(new ApiResponse(200, {}, "OTP verified successfully"));
 });
@@ -140,8 +137,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .cookie("accessToken", accessToken)
-    .cookie("refreshToken", refreshToken)
+    .cookie("refreshToken", refreshToken, options)
     .json(
       new ApiResponse(
         200,
@@ -152,9 +148,9 @@ export const loginUser = asyncHandler(async (req, res) => {
             email: user.email,
             username: user.username,
             isVerified: user.isVerified,
+            profilePicture: user?.profilePicture,
           },
           accessToken,
-          refreshToken,
         },
         "User logged In Successfully"
       )
@@ -162,73 +158,52 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 export const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: {
-        refreshToken: 1,
-      },
-    },
-    { new: true }
-  );
-
-  const options = {
+  res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: true,
-  };
-
-  res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "logged out successfully!"));
+    sameSite: "Strict",
+  });
+  res.status(200).json(new ApiResponse(200, {}, "Logout successful"));
 });
 
-export const refreshAccesToken = asyncHandler(async (req, res) => {
-  const { refreshToken } = req.cookies || req.body;
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
-    throw new ApiError(401, "Refresh token not provided. Please login again.");
+    throw new ApiError(401, "Unauthorized");
   }
 
-  try {
-    const decodedToken = jwt.decode(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
+  const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-    const user = await User.findById(decodedToken._id);
-
-    if (refreshToken !== user.refreshToken) {
-      throw new ApiError(
-        403,
-        "Invalid or expired refresh token. Please login again."
-      );
-    }
-
-    const newAccessToken = user.generateAccessToken();
-
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-    res
-      .status(200)
-      .cookie("accessToken", newAccessToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken: newAccessToken },
-          "Token refreshed successfully"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(
-      403,
-      "Invalid or expired refresh token. Please login again."
-    );
+  if (!decoded) {
+    throw new ApiError(401, "Unauthorized");
   }
+
+  const user = await User.findById(decoded._id);
+
+  if (!user) {
+    throw new ApiError(401, "Unauthorized", ERROR_CODES.UNAUTHORIZED);
+  }
+
+  const accessToken = await user.generateAccessToken();
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          username: user.username,
+          isVerified: user.isVerified,
+          profilePicture: user?.profilePicture,
+        },
+        accessToken,
+      },
+      "Token refreshed successfully"
+    )
+  );
 });
 
 export const getSuggestedUsers = asyncHandler(async (req, res) => {
