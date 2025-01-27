@@ -8,6 +8,7 @@ import { welcomeEmailTemplate } from "../utils/welcomeEmailTemplate.js";
 import jwt from "jsonwebtoken";
 
 const options = {
+  domain: process.env.COOKIE_DOMAIN,
   httpOnly: true,
   secure: true,
   sameSite: "Strict", // Prevent CSRF attacks by restricting cookie transmission
