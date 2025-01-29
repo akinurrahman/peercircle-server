@@ -1,88 +1,258 @@
+import mongoose from "mongoose";
 import { getPaginationInfo, getPaginationParams } from "../hooks/pagination.js";
 import { Post } from "../models/post.model.js";
 import { Product } from "../models/product.model.js";
-import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { shuffleArray } from "../utils/index.js";
 
-export const fetchAllPostAndProducts = asyncHandler(async (req, res) => {});
+
 
 export const fetchAllPosts = asyncHandler(async (req, res) => {
-  // Fetch total posts count and posts with populated fields, sorted by `createdAt` in descending order
-  const [ posts, user] = await Promise.all([
-    Post.find()
-      .populate({
-        path: "author",
-        select: "fullName profilePicture username _id",
-      })
-      .select("caption mediaUrls likes comments likes createdAt")
-      .sort({ createdAt: -1 }) // Sort by createdAt in descending order
-      .lean(),
-    User.findById(req.user?._id).lean(), 
+  const userId = req.user?._id || null; 
+
+  const posts = await Post.aggregate([
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "author",
+        foreignField: "_id",
+        as: "author",
+      },
+    },
+    {
+      $unwind: "$author",
+    },
+    {
+      $addFields: {
+        isLiked: {
+          $in: [userId, "$likes"],
+        },
+        isBookmarked: {
+          $in: ["$_id", "$author.bookmarks"],
+        },
+        isFollowing: {
+          $in: [userId, "$author.following"],
+        },
+        likeCount: {
+          $size: "$likes",
+        },
+        commentsCount: { $size: "$comments" },
+        type: "post",
+        isMine: {
+          $eq: ["$author._id", userId],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        caption: 1,
+        mediaUrls: 1,
+        isMine: 1,
+        type: 1,
+        likeCount: 1,
+        commentsCount: 1,
+        createdAt: 1,
+
+        isLiked: 1,
+        isBookmarked: 1,
+        isFollowing: 1,
+
+        author: {
+          _id: "$author._id",
+          fullName: "$author.fullName",
+          username: "$author.username",
+          profilePicture: "$author.profilePicture",
+        },
+      },
+    },
   ]);
 
-  // Fetch the current user to check following status (if `req.user` exists)
-  const currentUser = req.user
-    ? await User.findById(req.user._id).lean()
-    : null;
+  res.status(200).json(new ApiResponse(200, posts, "Fetched successfully!"));
+});
 
-  // Transform posts data
-  const enrichedPosts = posts.map((post) => {
-    const isFollowing =
-      currentUser?.following?.some(
-        (followedUser) =>
-          followedUser.toString() === post.author?._id.toString()
-      ) || false;
+export const fetchAllProducts = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || null;
 
-    // Get the total comment count
-    const totalComments = post.comments.length;
-    const isBookmarkedByMe = user?.bookmarks?.some(
-      (bookmark) => bookmark.toString() === post._id.toString()
-    );
+  const products = await Product.aggregate([
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "seller",
+        foreignField: "_id",
+        as: "seller",
+      },
+    },
+    {
+      $unwind: "$seller",
+    },
+    {
+      $addFields: {
+        isLiked: {
+          $in: [ userId, "$likes"],
+        },
+        isFollowing: {
+          $in: [ userId, "$seller.following"],
+        },
+        likeCount: { $size: "$likes" },
+        commentCount: { $size: "$comments" },
+        type: "product",
+        isMine: {
+          $eq: ["$seller._id",  userId],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        description: 1,
+        mediaUrls: 1,
+        isMine: 1,
+        type: 1,
+        likeCount: 1,
+        commentCount: 1,
+        createdAt: 1,
+        isLiked: 1,
+        isFollowing: 1,
 
-    return {
-      _id: post._id,
-      caption: post.caption,
-      mediaUrls: post.mediaUrls,
-      likeCount: post.likes.length,
-      isLikedByMe: post.likes.some((like) => like.equals(req.user?._id)),
-      isBookmarkedByMe,
-      authorName: post.author?.fullName || "Unknown",
-      authorId: post.author?._id || null,
-      isMine: currentUser
-        ? post.author?._id.toString() === currentUser._id.toString()
-        : false,
-      username: post.author?.username || "Unknown",
-      profilePicture: post.author?.profilePicture || "",
-      commentCount: totalComments,
-      isFollowing,
-    };
-  });
+        author: {
+          _id: "$seller._id",
+          fullName: "$seller.fullName",
+          username: "$seller.username",
+          profilePicture: "$seller.profilePicture",
+        },
+      },
+    },
+  ]);
 
-  res
-    .status(200)
-    .json(
-      new ApiResponse(200, { posts: enrichedPosts }, "Fetched successfully!")
-    );
+  res.status(200).json(new ApiResponse(200, products, "Fetched successfully!"));
 });
 
 
-export const fetchAllProducts = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPaginationParams(req);
+export const fetchAllFeed = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || null;
 
-  const totalProducts = await Product.countDocuments();
-  const products = await Product.find().skip(skip).limit(limit);
+  const data = await Post.aggregate([
+    {
+      $lookup: {
+        from: "users",
+        localField: "author",
+        foreignField: "_id",
+        as: "author",
+      },
+    },
+    {
+      $unwind: "$author",
+    },
+    {
+      $addFields: {
+        isLiked: {
+          $in: [userId, "$likes"],
+        },
+        isBookmarked: {
+          $in: ["$_id", "$author.bookmarks"],
+        },
+        isFollowing: {
+          $in: [userId, "$author.following"],
+        },
+        likeCount: {
+          $size: "$likes",
+        },
+        commentsCount: { $size: "$comments" },
+        type: "post",
+        isMine: {
+          $eq: ["$author._id", userId],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        caption: 1,
+        mediaUrls: 1,
+        isMine: 1,
+        type: 1,
+        likeCount: 1,
+        commentsCount: 1,
+        createdAt: 1,
+        isLiked: 1,
+        isBookmarked: 1,
+        isFollowing: 1,
+        author: {
+          _id: "$author._id",
+          fullName: "$author.fullName",
+          username: "$author.username",
+          profilePicture: "$author.profilePicture",
+        },
+      },
+    },
+  ]);
 
-  const paginationInfo = getPaginationInfo(totalProducts, page, limit);
+  const products = await Product.aggregate([
+    {
+      $lookup: {
+        from: "users",
+        localField: "seller",
+        foreignField: "_id",
+        as: "seller",
+      },
+    },
+    {
+      $unwind: "$seller",
+    },
+    {
+      $addFields: {
+        isLiked: {
+          $in: [userId, "$likes"],
+        },
+        isFollowing: {
+          $in: [userId, "$seller.following"],
+        },
+        likeCount: { $size: "$likes" },
+        commentCount: { $size: "$comments" },
+        type: "product",
+        isMine: {
+          $eq: ["$seller._id", userId],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        description: 1,
+        mediaUrls: 1,
+        isMine: 1,
+        type: 1,
+        likeCount: 1,
+        commentCount: 1,
+        createdAt: 1,
+        isLiked: 1,
+        isFollowing: 1,
+        author: {
+          _id: "$seller._id",
+          fullName: "$seller.fullName",
+          username: "$seller.username",
+          profilePicture: "$seller.profilePicture",
+        },
+      },
+    },
+  ]);
+
+  // Combine posts and products into one array
+  const feedItems = [...data, ...products];
+
+  // Sort the combined array by the createdAt field (latest first)
+  feedItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { products, paginationInfo },
-        "Fetched successfully!"
-      )
-    );
+    .json(new ApiResponse(200, feedItems, "Fetched feed successfully!"));
 });

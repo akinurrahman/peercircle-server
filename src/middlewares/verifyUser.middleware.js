@@ -50,24 +50,20 @@ export const isEmailVerified = asyncHandler(async (req, res, next) => {
   next();
 });
 
+
 export const attachUserIfLoggedIn = asyncHandler(async (req, res, next) => {
   const token =
     req.cookies?.accessToken ||
     req.header("Authorization")?.replace("Bearer ", "");
 
-  // If no token, simply continue without attaching user
+  // If no token, simply continue without attaching user (for unlogged users)
   if (!token) {
     return next();
   }
 
   try {
-    // Decode the token
-    const decodedToken = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
-
-    // If token is invalid, move on without attaching user
-    if (!decodedToken) {
-      return next();
-    }
+    // Decode and verify the token
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET); // Using verify instead of decode
 
     // Find the user from the token's ID
     const user = await User.findById(decodedToken._id).select(
@@ -76,11 +72,11 @@ export const attachUserIfLoggedIn = asyncHandler(async (req, res, next) => {
 
     // If user exists, attach to the request
     if (user) {
-      req.user = user;
+      req.user = user; // Attach the user to the request object
     }
 
     return next();
   } catch (error) {
-    return next(); // If any error occurs, move on without attaching user
+    return next(); // If token is invalid or any error occurs, continue without attaching user
   }
 });
