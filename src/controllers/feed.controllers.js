@@ -39,7 +39,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
         likeCount: {
           $size: "$likes",
         },
-        commentsCount: { $size: "$comments" },
+        commentCount: { $size: "$comments" },
         type: "post",
         isMine: {
           $eq: ["$author._id", userId],
@@ -54,7 +54,7 @@ export const fetchAllPosts = asyncHandler(async (req, res) => {
         isMine: 1,
         type: 1,
         likeCount: 1,
-        commentsCount: 1,
+        commentCount: 1,
         createdAt: 1,
 
         isLiked: 1,
@@ -165,7 +165,7 @@ export const fetchAllFeed = asyncHandler(async (req, res) => {
         likeCount: {
           $size: "$likes",
         },
-        commentsCount: { $size: "$comments" },
+        commentCount: { $size: "$comments" },
         type: "post",
         isMine: {
           $eq: ["$author._id", userId],
@@ -180,7 +180,7 @@ export const fetchAllFeed = asyncHandler(async (req, res) => {
         isMine: 1,
         type: 1,
         likeCount: 1,
-        commentsCount: 1,
+        commentCount: 1,
         createdAt: 1,
         isLiked: 1,
         isBookmarked: 1,
