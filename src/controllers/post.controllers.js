@@ -1,11 +1,12 @@
 import { Post } from "../models/post.model.js";
 import { User } from "../models/user.model.js";
-import { PostComment } from "../models/post-comment.model.js";
 
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { getSocketId, io } from "../socket/socket.js";
+import { Comment } from "../models/comment.model.js";
+import { Product } from "../models/product.model.js";
 
 export const addPost = asyncHandler(async (req, res) => {
   const { caption, mediaUrls } = req.body;
@@ -176,101 +177,61 @@ export const deletePost = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
 });
 
-export const addCommentOnPost = asyncHandler(async (req, res) => {
-  const { postId, comment, commentId, reply } = req.body;
-  const userId = req.user?._id;
 
-  if (commentId) {
-    // Handle reply to a comment
-    if (!userId || !reply || !commentId) {
-      throw new ApiError(400, "Missing required fields for reply");
-    }
+export const addComment = asyncHandler(async (req,res)=>{
+  const { text, refType, refId } = req.body;
+  const author = req.user?._id;
 
-    const parentComment = await PostComment.findById(commentId);
-    if (!parentComment) {
-      throw new ApiError(404, "Parent comment not found");
-    }
+  if (!["Post", "Product"].includes(refType)) {
+    throw new ApiError(400, "Invalid reference type");
+  }
 
-    // Create a new reply object
-    const newReply = {
-      userId,
-      comment: reply,
-      createdAt: new Date(),
-    };
+  const existingItem =
+    refType === "Post"
+      ? await Post.findById(refId)
+      : await Product.findById(refId);
+  if (!existingItem) {
+    return res.status(404).json(new ApiResponse(404, null, "Item not found"));
+  }
 
-    // Add the new reply to the parent comment's replies array
-    parentComment.replies.push(newReply);
-    await parentComment.save();
+  const newComment = new Comment({ text, author, refType, refId });
+  await newComment.save();
 
-    // Fetch the newly added reply, and populate user info
-    const populatedReply = await PostComment.findById(commentId)
-      .populate("replies.userId", "fullName profilePicture")
-      .select("replies -_id") // Only select the replies field
-      .lean();
-
-    // Get the last added reply
-    const replyToSend =
-      populatedReply.replies[populatedReply.replies.length - 1];
-
-    res
-      .status(201)
-      .json(new ApiResponse(201, replyToSend, "Reply added successfully!"));
-  } else {
-    // Handle new comment
-    if (!postId || !userId || !comment) {
-      throw new ApiError(400, "Missing required fields for comment");
-    }
-
-    const newComment = new PostComment({
-      postId,
-      userId,
-      comment,
-      replies: [], // Initially no replies
+  // Push the new comment into the respective Post or Product
+  if (refType === "Post") {
+    await Post.findByIdAndUpdate(refId, {
+      $push: { comments: newComment._id },
     });
-
-    // Save the new comment to the PostComment model
-    const savedComment = await newComment.save();
-
-    // Add the comment ID to the Post model
-    await Post.findByIdAndUpdate(
-      postId,
-      { $push: { comments: savedComment._id } },
-      { new: true }
-    );
-
-    // Populate user information (fullName, profilePicture) for the new comment
-    const populatedComment = await PostComment.findById(
-      savedComment._id
-    ).populate("userId", "fullName profilePicture");
-
-    res
-      .status(201)
-      .json(
-        new ApiResponse(201, populatedComment, "Comment added successfully!")
-      );
-  }
-});
-
-
-export const getAllCommentsForPost = asyncHandler(async (req, res) => {
-  const { postId } = req.query;
-
-  if (!postId) {
-    return res
-      .status(400)
-      .json(new ApiResponse(400, null, "Post ID is required"));
+  } else {
+    await Product.findByIdAndUpdate(refId, {
+      $push: { comments: newComment._id },
+    });
   }
 
-  const comments = await PostComment.find({ postId })
-    .populate("userId", "fullName profilePicture")
-    .populate("replies.userId", "fullName profilePicture")
-    .lean();
-
-  if (comments.length === 0) {
-    return res.status(200).json(new ApiResponse(200, [], "No comments found"));
-  }
+  const populatedComment = await Comment.findById(newComment._id).populate(
+    "author",
+    "fullName email profilePicture"
+  );
 
   res
-    .status(200)
-    .json(new ApiResponse(200, comments, "Comments fetched successfully!"));
-});
+    .status(201)
+    .json(
+      new ApiResponse(201, populatedComment, "Comment added successfully!")
+    );
+})
+
+export const getAllComment = asyncHandler(async(req,res)=>{
+      const { refType } = req.params;
+      const { refId } = req.query;
+
+      if (!["Post", "Product"].includes(refType)) {
+        throw new ApiError(400, "Invalid reference type");
+      }
+
+      const comments = await Comment.find({ refType, refId }).populate(
+        "author",
+        "fullName email profilePicture"
+      );
+
+      res.status(200).json(new ApiResponse(200, comments, "Comments fetched successfully!"));
+})

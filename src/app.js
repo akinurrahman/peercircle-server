@@ -25,6 +25,7 @@ import PostsRoutes from "./routes/post.route.js";
 import MessageRoutes from "./routes/message.route.js";
 import ProductRoutes from "./routes/product.route.js";
 import FeedRoutes from "./routes/feed.routes.js";
+import CommentRoutes from './routes/comment.routes.js'
 
 app.use("/api/v1", userRoutes);
 app.use("/api/v1", FileRoutes);
@@ -32,6 +33,7 @@ app.use("/api/v1", PostsRoutes);
 app.use("/api/v1", MessageRoutes);
 app.use("/api/v1", ProductRoutes)
 app.use("/api/v1", FeedRoutes)
+app.use("/api/v1", CommentRoutes)
 
 
 app.use(errorHandler);
