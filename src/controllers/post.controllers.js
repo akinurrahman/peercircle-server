@@ -69,56 +69,49 @@ export const getAllPosts = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, response, "Posts fetched successfully"));
 });
 
-export const likeUnlikePost = asyncHandler(async (req, res) => {
-  const { postId } = req.params;
-  const userId = req.user._id;
+export const likeUnlikeItem = asyncHandler(async (req, res) => {
+  const { refId } = req.params;
+  const { refType } = req.body;
+  const userId = req.user?._id;
 
-  // Ensure the post exists
-  const post = await Post.findById(postId);
-  if (!post) {
-    throw new ApiError(404, "Post not found");
+  // Validate refType
+  if (!["Post", "Product"].includes(refType)) {
+    throw new ApiError(400, "Invalid reference type");
   }
 
-  // Check if the user already liked the post and update accordingly
-  const update = post.likes.includes(userId)
-    ? { $pull: { likes: userId } } // Unlike (remove user from likes array)
-    : { $addToSet: { likes: userId } }; // Like (add user to likes array only if not already liked)
 
-  // Perform the update in a single atomic operation and get the updated post
-  const updatedPost = await Post.findByIdAndUpdate(postId, update, {
-    new: true,
-  });
 
-  // Determine the action based on the updated post's likes array
-  const action = updatedPost.likes.includes(userId) ? "Liked" : "Unliked";
-
-  const user = await User.findById(userId).select("fullName profilePicture username");
-  const ownerId = post.author.toString();
-  if(ownerId !== userId) {
-    const notification = {
-      type: "like",
-      userId,
-      userDetails : user,
-      postId: post._id,
-      message: `${user.fullName} ${action} your post`,
-    }
-    const postOwnerSocketId = getSocketId(ownerId);
-    if(postOwnerSocketId) {
-      io.to(postOwnerSocketId).emit("notification", notification);
-    }
+  let item;
+  if (refType === "Post") {
+    item = await Post.findById(refId);
+  } else {
+    item = await Product.findById(refId);
   }
 
-  // Return the updated data
-  res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        isLiked: updatedPost.likes.includes(userId), // Correct the isLiked value
-        likeCount: updatedPost.likes.length, // Correct like count
-      },
-      `${action} successfully!`
-    )
-  );
+  if (!item) {
+    throw new ApiError(404, "Item not found");
+  }
+
+  // Check if user has already liked the item
+  const index = item.likes.indexOf(userId);
+
+  if (index === -1) {
+    // User hasn't liked the item yet, so add the user to likes
+    item.likes.push(userId);
+  } else {
+    // User has already liked the item, so remove the user from likes
+    item.likes.splice(index, 1);
+  }
+
+  // Save the item with updated likes array
+  await item.save();
+
+  const response = {
+    isLiked : item.likes.includes(userId),
+    likeCount: item.likes.length,
+  }
+
+  return res.status(200).json(new ApiResponse(200, response, "Item liked"));
 });
 
 export const bookMarkPost = asyncHandler(async (req, res) => {
@@ -177,8 +170,7 @@ export const deletePost = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "Post deleted successfully!"));
 });
 
-
-export const addComment = asyncHandler(async (req,res)=>{
+export const addComment = asyncHandler(async (req, res) => {
   const { text, refType, refId } = req.body;
   const author = req.user?._id;
 
@@ -218,20 +210,22 @@ export const addComment = asyncHandler(async (req,res)=>{
     .json(
       new ApiResponse(201, populatedComment, "Comment added successfully!")
     );
-})
+});
 
-export const getAllComment = asyncHandler(async(req,res)=>{
-      const { refType } = req.params;
-      const { refId } = req.query;
+export const getAllComment = asyncHandler(async (req, res) => {
+  const { refType } = req.params;
+  const { refId } = req.query;
 
-      if (!["Post", "Product"].includes(refType)) {
-        throw new ApiError(400, "Invalid reference type");
-      }
+  if (!["Post", "Product"].includes(refType)) {
+    throw new ApiError(400, "Invalid reference type");
+  }
 
-      const comments = await Comment.find({ refType, refId }).populate(
-        "author",
-        "fullName email profilePicture"
-      );
+  const comments = await Comment.find({ refType, refId }).populate(
+    "author",
+    "fullName email profilePicture"
+  );
 
-      res.status(200).json(new ApiResponse(200, comments, "Comments fetched successfully!"));
-})
+  res
+    .status(200)
+    .json(new ApiResponse(200, comments, "Comments fetched successfully!"));
+});
