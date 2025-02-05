@@ -4,9 +4,9 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { getSocketId, io } from "../socket/socket.js";
 import { Comment } from "../models/comment.model.js";
 import { Product } from "../models/product.model.js";
+import { isValidImageUrl } from "../utils/isValidImageUrl.js";
 
 export const addPost = asyncHandler(async (req, res) => {
   const { caption, mediaUrls } = req.body;
@@ -23,7 +23,8 @@ export const addPost = asyncHandler(async (req, res) => {
 
   // Validate each media URL
   for (let url of mediaUrls) {
-    if (!isValidUrl(url)) {
+    const isValid = await isValidImageUrl(url);
+    if (!isValid) {
       throw new ApiError(400, `Invalid media URL: ${url}`);
     }
   }
@@ -46,15 +47,7 @@ export const addPost = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, post, "Post created successfully!"));
 });
 
-// Helper function to validate URL
-const isValidUrl = (url) => {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.protocol === "https:"; // Ensure the URL is HTTPS
-  } catch (e) {
-    return false;
-  }
-};
+
 
 
 export const getAllPosts = asyncHandler(async (req, res) => {
