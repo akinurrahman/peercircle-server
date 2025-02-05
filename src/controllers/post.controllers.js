@@ -12,8 +12,20 @@ export const addPost = asyncHandler(async (req, res) => {
   const { caption, mediaUrls } = req.body;
   const author = req.user?._id;
 
-  if (!mediaUrls) {
+  if (!mediaUrls || mediaUrls.length === 0) {
     throw new ApiError(400, "Media URL is required");
+  }
+
+  // Validate that mediaUrls is an array and contains valid URLs
+  if (!Array.isArray(mediaUrls)) {
+    throw new ApiError(400, "Media URLs should be an array.");
+  }
+
+  // Validate each media URL
+  for (let url of mediaUrls) {
+    if (!isValidUrl(url)) {
+      throw new ApiError(400, `Invalid media URL: ${url}`);
+    }
   }
 
   const post = new Post({
@@ -21,16 +33,29 @@ export const addPost = asyncHandler(async (req, res) => {
     mediaUrls,
     author,
   });
+
   const savedPost = await post.save();
   await User.findByIdAndUpdate(
     author,
     { $push: { posts: savedPost._id } },
     { new: true }
   );
+
   res
     .status(201)
     .json(new ApiResponse(201, post, "Post created successfully!"));
 });
+
+// Helper function to validate URL
+const isValidUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === "https:"; // Ensure the URL is HTTPS
+  } catch (e) {
+    return false;
+  }
+};
+
 
 export const getAllPosts = asyncHandler(async (req, res) => {
   const userId = req.query.profileId || req.user?._id;
