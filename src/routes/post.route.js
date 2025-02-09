@@ -16,7 +16,7 @@ import { postLimiter } from "../middlewares/express-rate-limiter.middleware.js";
 
 const router = Router();
 
-router.route("/post").post(verifyUser, isEmailVerified, postLimiter, addPost);
+router.route("/post").post(verifyUser, isEmailVerified,  addPost);
 router.route("/post").get(verifyUser, getAllPosts);
 router.route("/like-unlike/:refId").patch(verifyUser, likeUnlikeItem);
 
